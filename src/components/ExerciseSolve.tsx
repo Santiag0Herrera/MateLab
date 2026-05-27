@@ -1,0 +1,352 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Upload, Check, Loader2 } from "lucide-react";
+import { Exercise, initialExercises } from "../data/exercises";
+import { getOrCreateStudentId } from "../lib/studentIdentity";
+
+interface EvaluationResult {
+  score?: number;
+  corrections?: string[];
+  feedback?: string;
+  isFallback?: boolean;
+}
+
+interface PendingChallenge {
+  _id: string;
+  senderId: string;
+}
+
+interface SavedSolution {
+  _id: string;
+  evaluation?: EvaluationResult;
+  createdAt?: string;
+}
+
+export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: string }) {
+  const router = useRouter();
+  const [exercise, setExercise] = useState<Exercise | null>(null);
+  const [solution, setSolution] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
+  const [error, setError] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [pendingChallenge, setPendingChallenge] = useState<PendingChallenge | null>(null);
+  const [isCheckingChallenge, setIsCheckingChallenge] = useState(true);
+  const [savedSolution, setSavedSolution] = useState<SavedSolution | null>(null);
+  const [isCheckingSolution, setIsCheckingSolution] = useState(true);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("matelab-exercises");
+    const exercises = stored ? JSON.parse(stored) : initialExercises;
+    const found = exercises.find((ex: Exercise) => ex.id === id);
+    setExercise(found || null);
+    const currentStudentId = getOrCreateStudentId();
+    setStudentId(currentStudentId);
+    setIsCheckingSolution(true);
+
+    fetch(
+      `/api/solutions/status?studentId=${encodeURIComponent(currentStudentId)}&exerciseId=${encodeURIComponent(id)}`
+    )
+      .then(async (response) => {
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload.error || "No se pudo verificar si el ejercicio ya fue resuelto.");
+        }
+
+        setSavedSolution(payload.solution || null);
+      })
+      .catch(() => {
+        setSavedSolution(null);
+      })
+      .finally(() => setIsCheckingSolution(false));
+
+    if (challengeId) {
+      setIsCheckingChallenge(false);
+      return;
+    }
+
+    fetch(
+      `/api/challenges/pending?studentId=${encodeURIComponent(currentStudentId)}&exerciseId=${encodeURIComponent(id)}`
+    )
+      .then(async (response) => {
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload.error || "No se pudo verificar el estado del desafío.");
+        }
+
+        setPendingChallenge(payload.pendingChallenge || null);
+      })
+      .catch(() => {
+        setPendingChallenge(null);
+      })
+      .finally(() => setIsCheckingChallenge(false));
+  }, [id, challengeId]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setImage(e.target.files[0]);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!exercise || !solution.trim()) return;
+
+    setIsEvaluating(true);
+    setError("");
+
+    let result: EvaluationResult | null = null;
+
+    try {
+      const response = await fetch("/api/evaluate-exercise", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          exerciseId: id,
+          topic: exercise.topic,
+          statement: exercise.statement,
+          studentSolution: solution,
+          imageAttached: !!image,
+        }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "No se pudo evaluar la resolución.");
+      }
+
+      result = payload.evaluation;
+      setEvaluation(result);
+
+      const saveResponse = await fetch("/api/solutions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          challengeId,
+          exerciseId: id,
+          exerciseStatement: exercise.statement,
+          exerciseTopic: exercise.topic,
+          studentId,
+          solutionText: solution,
+          imageAttached: !!image,
+          evaluation: result,
+        }),
+      });
+
+      const savePayload = await saveResponse.json();
+
+      if (!saveResponse.ok) {
+        throw new Error(savePayload.error || "La resolución fue evaluada, pero no se pudo guardar.");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "No se pudo evaluar la resolución.";
+      setError(message);
+      setIsEvaluating(false);
+      return;
+    }
+
+    setIsEvaluating(false);
+    setShowConfirmation(true);
+  };
+
+  if (!exercise) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Ejercicio no encontrado</p>
+      </div>
+    );
+  }
+
+  if (showConfirmation) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-3xl mx-auto p-6">
+          <div className="flex flex-col items-center justify-center min-h-[60vh]">
+            <div className="bg-green-50 border border-green-200 rounded-full p-6 mb-6">
+              <Check className="size-16 text-green-600" />
+            </div>
+
+            <h2 className="mb-3">Resolución guardada correctamente</h2>
+
+            <p className="text-muted-foreground text-center mb-8">
+              Tu resolución fue evaluada y almacenada exitosamente.
+            </p>
+
+            {evaluation && (
+              <div className="bg-card border border-border rounded-xl p-6 mb-6 max-w-2xl w-full text-left">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <h3>Corrección de IA</h3>
+                  {typeof evaluation.score === "number" && (
+                    <span className="bg-primary/10 text-primary px-3 py-1 rounded-full">
+                      Puntaje: {evaluation.score}/100
+                    </span>
+                  )}
+                </div>
+
+                {evaluation.feedback && (
+                  <p className="text-muted-foreground mb-4">{evaluation.feedback}</p>
+                )}
+
+                {evaluation.corrections && evaluation.corrections.length > 0 && (
+                  <ul className="list-disc pl-5 space-y-2">
+                    {evaluation.corrections.map((correction, index) => (
+                      <li key={index}>{correction}</li>
+                    ))}
+                  </ul>
+                )}
+
+                {evaluation.isFallback && (
+                  <p className="text-sm text-muted-foreground mt-4">
+                    Configurá N8N_WEBHOOK_URL para recibir una evaluación real del flujo de n8n.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={() => router.push(`/exercise/${id}`)}
+              className="bg-primary text-primary-foreground py-3 px-8 rounded-lg hover:opacity-90 transition-opacity"
+            >
+              Volver al ejercicio
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="max-w-3xl mx-auto p-6">
+        {/* Header */}
+        <button
+          onClick={() => router.push(`/exercise/${id}`)}
+          className="flex items-center gap-2 mb-6 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="size-5" />
+          Volver al ejercicio
+        </button>
+
+        <h1 className="mb-8">Resolver ejercicio</h1>
+
+        {savedSolution && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-6">
+            <h3 className="text-green-900 mb-2">Ya resolviste este ejercicio</h3>
+            <p className="text-green-800 mb-4">
+              No podés cargar otra resolución para el mismo ejercicio.
+            </p>
+            {typeof savedSolution.evaluation?.score === "number" && (
+              <p className="text-green-900 font-medium mb-4">
+                Puntaje obtenido: {savedSolution.evaluation.score}/100
+              </p>
+            )}
+            <button
+              onClick={() => router.push("/results")}
+              className="bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:opacity-90 transition-opacity"
+            >
+              Ver mis resultados
+            </button>
+          </div>
+        )}
+
+        {challengeId && (
+          <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-6">
+            <p className="text-primary font-medium">Estás resolviendo un desafío</p>
+          </div>
+        )}
+
+        {!challengeId && pendingChallenge && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-5 mb-6">
+            <h3 className="text-yellow-900 mb-2">Este ejercicio tiene un desafío pendiente</h3>
+            <p className="text-yellow-800 mb-4">
+              {pendingChallenge.senderId} te desafió con este ejercicio. Para resolverlo, entrá desde
+              Mis desafíos así queda asociado al desafío correcto.
+            </p>
+            <button
+              onClick={() => router.push("/challenges")}
+              className="bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:opacity-90 transition-opacity"
+            >
+              Ir a Mis desafíos
+            </button>
+          </div>
+        )}
+
+        {/* Enunciado del ejercicio */}
+        <div className="bg-card border border-border rounded-xl p-6 mb-6">
+          <p className="text-sm text-muted-foreground mb-2">Enunciado</p>
+          <p className="text-lg">{exercise.statement}</p>
+        </div>
+
+        {/* Campo de resolución */}
+        <div className="bg-card border border-border rounded-xl p-6 mb-6">
+          <label className="block mb-3">
+            <span className="text-lg font-medium">Tu resolución</span>
+          </label>
+
+          <textarea
+            value={solution}
+            onChange={(e) => setSolution(e.target.value)}
+            disabled={!!savedSolution || (!!pendingChallenge && !challengeId)}
+            placeholder="Escribí tu resolución paso a paso e incluí el resultado final al terminar."
+            className="w-full min-h-[400px] bg-background border border-border rounded-lg p-4 resize-y focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        {/* Opción de adjuntar imagen */}
+        <div className="bg-card border border-border rounded-xl p-6 mb-6">
+          <label className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-lg p-3">
+            <Upload className="size-6 text-muted-foreground" />
+            <div className="flex-1">
+              <p className="font-medium">Adjuntar imagen o foto de la resolución</p>
+              {image && (
+                <p className="text-sm text-green-600 mt-1">
+                  Imagen seleccionada: {image.name}
+                </p>
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="hidden"
+            />
+          </label>
+        </div>
+
+        {/* Botón guardar */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-red-700">{error}</p>
+          </div>
+        )}
+
+        <button
+          onClick={handleSave}
+          disabled={
+            !solution.trim() ||
+            !studentId ||
+            isEvaluating ||
+            !!savedSolution ||
+            isCheckingSolution ||
+            isCheckingChallenge ||
+            (!!pendingChallenge && !challengeId)
+          }
+          className="w-full bg-primary text-primary-foreground py-4 px-6 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {isEvaluating && <Loader2 className="size-5 animate-spin" />}
+          {isEvaluating ? "Evaluando con IA..." : "Enviar y corregir resolución"}
+        </button>
+      </div>
+    </div>
+  );
+}
