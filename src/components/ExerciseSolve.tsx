@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Upload, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Loader2, ImageIcon, X } from "lucide-react";
 import { Exercise, initialExercises } from "../data/exercises";
 import { getOrCreateStudentId } from "../lib/studentIdentity";
 
@@ -27,8 +27,9 @@ interface SavedSolution {
 export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: string }) {
   const router = useRouter();
   const [exercise, setExercise] = useState<Exercise | null>(null);
-  const [solution, setSolution] = useState("");
   const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
@@ -88,14 +89,41 @@ export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: s
       .finally(() => setIsCheckingChallenge(false));
   }, [id, challengeId]);
 
+  const applyImage = (file: File) => {
+    setImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setImage(e.target.files[0]);
+      applyImage(e.target.files[0]);
+    }
+  };
+
+  const handleClearImage = () => {
+    setImage(null);
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePreview(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) {
+      applyImage(file);
     }
   };
 
   const handleSave = async () => {
-    if (!exercise || !solution.trim()) return;
+    if (!exercise || !image) return;
 
     setIsEvaluating(true);
     setError("");
@@ -103,18 +131,15 @@ export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: s
     let result: EvaluationResult | null = null;
 
     try {
+      const form = new FormData();
+      form.append("image", image);
+      form.append("exerciseId", id);
+      form.append("topic", exercise.topic ?? "");
+      form.append("statement", exercise.statement);
+
       const response = await fetch("/api/evaluate-exercise", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          exerciseId: id,
-          topic: exercise.topic,
-          statement: exercise.statement,
-          studentSolution: solution,
-          imageAttached: !!image,
-        }),
+        body: form,
       });
 
       const payload = await response.json();
@@ -137,8 +162,7 @@ export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: s
           exerciseStatement: exercise.statement,
           exerciseTopic: exercise.topic,
           studentId,
-          solutionText: solution,
-          imageAttached: !!image,
+          imageAttached: true,
           evaluation: result,
         }),
       });
@@ -287,40 +311,56 @@ export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: s
           <p className="text-lg">{exercise.statement}</p>
         </div>
 
-        {/* Campo de resolución */}
+        {/* Zona de carga de imagen */}
         <div className="bg-card border border-border rounded-xl p-6 mb-6">
-          <label className="block mb-3">
-            <span className="text-lg font-medium">Tu resolución</span>
-          </label>
+          <p className="text-lg font-medium mb-3">Tu resolución</p>
 
-          <textarea
-            value={solution}
-            onChange={(e) => setSolution(e.target.value)}
-            disabled={!!savedSolution || (!!pendingChallenge && !challengeId)}
-            placeholder="Escribí tu resolución paso a paso e incluí el resultado final al terminar."
-            className="w-full min-h-[400px] bg-background border border-border rounded-lg p-4 resize-y focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-
-        {/* Opción de adjuntar imagen */}
-        <div className="bg-card border border-border rounded-xl p-6 mb-6">
-          <label className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-lg p-3">
-            <Upload className="size-6 text-muted-foreground" />
-            <div className="flex-1">
-              <p className="font-medium">Adjuntar imagen o foto de la resolución</p>
-              {image && (
-                <p className="text-sm text-green-600 mt-1">
-                  Imagen seleccionada: {image.name}
-                </p>
-              )}
+          {image && imagePreview ? (
+            <div className="relative min-h-[400px] flex flex-col items-center justify-center gap-4">
+              <img
+                src={imagePreview}
+                alt="Preview de la resolución"
+                className="max-h-[340px] object-contain rounded-lg border border-border"
+              />
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-muted-foreground">{image.name}</p>
+                <button
+                  type="button"
+                  onClick={handleClearImage}
+                  className="flex items-center gap-1 text-sm text-destructive hover:opacity-80 transition-opacity"
+                >
+                  <X className="size-4" />
+                  Quitar
+                </button>
+              </div>
             </div>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="hidden"
-            />
-          </label>
+          ) : (
+            <label
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`flex flex-col items-center justify-center min-h-[400px] rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
+                isDragging
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50 hover:bg-muted/30"
+              }`}
+            >
+              <ImageIcon className="size-12 text-muted-foreground mb-4" />
+              <p className="font-medium text-center">Arrastrá tu imagen aquí</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                o hacé clic para seleccionar un archivo
+              </p>
+              <p className="text-xs text-muted-foreground mt-3">
+                JPG, PNG, WEBP · Máx. 10 MB
+              </p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </label>
+          )}
         </div>
 
         {/* Botón guardar */}
@@ -333,7 +373,7 @@ export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: s
         <button
           onClick={handleSave}
           disabled={
-            !solution.trim() ||
+            !image ||
             !studentId ||
             isEvaluating ||
             !!savedSolution ||

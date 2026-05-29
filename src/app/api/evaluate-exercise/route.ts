@@ -1,13 +1,5 @@
 import { NextResponse } from "next/server";
 
-interface EvaluationRequest {
-  exerciseId?: string;
-  topic?: string;
-  statement?: string;
-  studentSolution?: string;
-  imageAttached?: boolean;
-}
-
 const fallbackEvaluation = {
   score: 70,
   feedback:
@@ -86,20 +78,15 @@ function normalizeEvaluation(payload: unknown): Record<string, unknown> {
 }
 
 export async function POST(request: Request) {
-  let body: EvaluationRequest;
+  const form = await request.formData();
+  const statement = form.get("statement") as string | null;
+  const exerciseId = form.get("exerciseId") as string | null;
+  const topic = form.get("topic") as string | null;
+  const image = form.get("image") as File | null;
 
-  try {
-    body = await request.json();
-  } catch {
+  if (!statement || !image || image.size === 0) {
     return NextResponse.json(
-      { error: "El cuerpo de la solicitud debe ser JSON valido." },
-      { status: 400 }
-    );
-  }
-
-  if (!body.statement || !body.studentSolution) {
-    return NextResponse.json(
-      { error: "Faltan el enunciado o la resolucion del estudiante." },
+      { error: "Falta el enunciado o no se adjuntó ninguna imagen." },
       { status: 400 }
     );
   }
@@ -121,11 +108,10 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         source: "matelab",
-        exerciseId: body.exerciseId,
-        topic: body.topic,
-        statement: body.statement,
-        studentSolution: body.studentSolution,
-        imageAttached: body.imageAttached,
+        exerciseId,
+        topic,
+        statement,
+        studentSolution: "",
       }),
     });
 
