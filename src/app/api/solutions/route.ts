@@ -9,7 +9,6 @@ interface SolutionBody {
   exerciseStatement?: string;
   exerciseTopic?: string;
   studentId?: string;
-  solutionText?: string;
   imageAttached?: boolean;
   evaluation?: {
     score?: number;
@@ -49,9 +48,9 @@ export async function POST(request: Request) {
 
   const studentId = body.studentId?.trim().toUpperCase();
 
-  if (!studentId || !body.exerciseId || !body.solutionText) {
+  if (!studentId || !body.exerciseId || !body.imageAttached) {
     return NextResponse.json(
-      { error: "studentId, exerciseId, and solutionText are required." },
+      { error: "studentId, exerciseId e imageAttached son requeridos." },
       { status: 400 }
     );
   }
@@ -116,8 +115,7 @@ export async function POST(request: Request) {
     exerciseStatement: body.exerciseStatement || "",
     exerciseTopic: body.exerciseTopic || "",
     studentId,
-    solutionText: body.solutionText,
-    imageAttached: !!body.imageAttached,
+    imageAttached: true,
     evaluation: {
       score: body.evaluation?.score,
       feedback: body.evaluation?.feedback || "",

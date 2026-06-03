@@ -40,7 +40,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ evaluation });
-  } catch {
+  } catch (err) {
+    console.error("[evaluate-exercise] Error al llamar a Gemini:", err);
     return NextResponse.json(
       { error: "No se pudo evaluar la resolución con Gemini." },
       { status: 502 }

@@ -82,5 +82,6 @@ export async function evaluateExerciseWithGemini(
   ]);
 
   const rawText = result.response.text();
+  console.log("[gemini] Respuesta raw:", rawText);
   return parseEvaluationResult(rawText);
 }
