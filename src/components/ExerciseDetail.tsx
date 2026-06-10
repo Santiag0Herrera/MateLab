@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Users } from "lucide-react";
-import { Exercise, initialExercises } from "../data/exercises";
+import { ArrowLeft, Loader2, Users } from "lucide-react";
+import { Exercise } from "../data/exercises";
 import { getOrCreateStudentId } from "../lib/studentIdentity";
 
 interface ExerciseStatus {
@@ -25,14 +25,20 @@ interface ExerciseStatus {
 export function ExerciseDetail({ id }: { id: string }) {
   const router = useRouter();
   const [exercise, setExercise] = useState<Exercise | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [studentId, setStudentId] = useState("");
   const [status, setStatus] = useState<ExerciseStatus | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem("matelab-exercises");
-    const exercises = stored ? JSON.parse(stored) : initialExercises;
-    const found = exercises.find((ex: Exercise) => ex.id === id);
-    setExercise(found || null);
+    fetch(`/api/exercises/${id}`)
+      .then(async (res) => {
+        if (!res.ok) { setNotFound(true); return; }
+        setExercise(await res.json());
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setIsLoading(false));
+
     const currentStudentId = getOrCreateStudentId();
     setStudentId(currentStudentId);
 
@@ -49,10 +55,27 @@ export function ExerciseDetail({ id }: { id: string }) {
       .catch(() => setStatus(null));
   }, [id]);
 
-  if (!exercise) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Ejercicio no encontrado</p>
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (notFound || !exercise) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-4xl mx-auto p-6">
+          <button
+            onClick={() => router.push("/exercises")}
+            className="flex items-center gap-2 mb-6 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-5" />
+            Volver al listado
+          </button>
+          <p className="text-muted-foreground">Ejercicio no encontrado</p>
+        </div>
       </div>
     );
   }

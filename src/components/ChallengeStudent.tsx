@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Copy, Loader2, User, X } from "lucide-react";
-import { Exercise, initialExercises } from "../data/exercises";
+import { Exercise } from "../data/exercises";
 import { getOrCreateStudentId } from "../lib/studentIdentity";
 
 interface StudentResult {
@@ -14,6 +14,8 @@ interface StudentResult {
 export function ChallengeStudent({ id }: { id: string }) {
   const router = useRouter();
   const [exercise, setExercise] = useState<Exercise | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [myStudentId, setMyStudentId] = useState("");
   const [recipientStudentId, setRecipientStudentId] = useState("");
   const [message, setMessage] = useState("Te desafío a resolver este ejercicio y comparar procedimientos.");
@@ -28,11 +30,16 @@ export function ChallengeStudent({ id }: { id: string }) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem("matelab-exercises");
-    const exercises = stored ? JSON.parse(stored) : initialExercises;
-    const found = exercises.find((ex: Exercise) => ex.id === id);
-    setExercise(found || null);
     setMyStudentId(getOrCreateStudentId());
+
+    fetch(`/api/exercises/${id}`)
+      .then(async (res) => {
+        if (!res.ok) { setNotFound(true); return; }
+        const data = await res.json();
+        setExercise(data);
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setIsLoading(false));
   }, [id]);
 
   useEffect(() => {
@@ -126,7 +133,15 @@ export function ChallengeStudent({ id }: { id: string }) {
     setTimeout(() => setCopied(false), 1800);
   };
 
-  if (!exercise) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (notFound || !exercise) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Ejercicio no encontrado</p>

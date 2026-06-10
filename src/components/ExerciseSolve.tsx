@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Loader2, ImageIcon, X } from "lucide-react";
-import { Exercise, initialExercises } from "../data/exercises";
+import { Exercise } from "../data/exercises";
 import { getOrCreateStudentId } from "../lib/studentIdentity";
 
 interface EvaluationResult {
@@ -27,6 +27,8 @@ interface SavedSolution {
 export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: string }) {
   const router = useRouter();
   const [exercise, setExercise] = useState<Exercise | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -41,10 +43,14 @@ export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: s
   const [isCheckingSolution, setIsCheckingSolution] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem("matelab-exercises");
-    const exercises = stored ? JSON.parse(stored) : initialExercises;
-    const found = exercises.find((ex: Exercise) => ex.id === id);
-    setExercise(found || null);
+    fetch(`/api/exercises/${id}`)
+      .then(async (res) => {
+        if (!res.ok) { setNotFound(true); return; }
+        setExercise(await res.json());
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setIsLoading(false));
+
     const currentStudentId = getOrCreateStudentId();
     setStudentId(currentStudentId);
     setIsCheckingSolution(true);
@@ -183,10 +189,27 @@ export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: s
     setShowConfirmation(true);
   };
 
-  if (!exercise) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Ejercicio no encontrado</p>
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (notFound || !exercise) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-3xl mx-auto p-6">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 mb-6 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-5" />
+            Volver
+          </button>
+          <p className="text-muted-foreground">Ejercicio no encontrado</p>
+        </div>
       </div>
     );
   }
