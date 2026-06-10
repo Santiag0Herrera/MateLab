@@ -8,9 +8,11 @@ import { getOrCreateStudentId } from "../lib/studentIdentity";
 
 interface ExerciseStatus {
   solution?: {
+    solutionText?: string;
     evaluation?: {
       score?: number;
       feedback?: string;
+      corrections?: string[];
     };
   } | null;
   latestChallenge?: {
@@ -140,18 +142,41 @@ export function ExerciseDetail({ id }: { id: string }) {
 
           {status?.solution && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <p className="text-green-900 font-medium mb-1">
-                Ya resolviste este ejercicio
-              </p>
-              {typeof status.solution.evaluation?.score === "number" && (
-                <p className="text-green-900">
-                  Puntaje obtenido: {status.solution.evaluation.score}/100
-                </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-green-900 font-medium">Ya resolviste este ejercicio</p>
+                {typeof status.solution.evaluation?.score === "number" && (
+                  <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                    {status.solution.evaluation.score}/100
+                  </span>
+                )}
+              </div>
+              {status.solution.solutionText && (
+                <div className="border-t border-green-200 pt-2 mt-2">
+                  <p className="text-green-700 text-xs font-semibold uppercase tracking-wide mb-1">Tu respuesta:</p>
+                  <div className="text-green-900 text-sm space-y-0.5">
+                    {status.solution.solutionText.replace(/\\n/g, "\n").split("\n").map((line, i) => (
+                      <p key={i}>{line || " "}</p>
+                    ))}
+                  </div>
+                </div>
               )}
-              {status.solution.evaluation?.feedback && (
-                <p className="text-green-800 text-sm mt-2">
-                  {status.solution.evaluation.feedback}
-                </p>
+              {(status.solution.evaluation?.feedback || (status.solution.evaluation?.corrections?.length ?? 0) > 0) && (
+                <div className="border-t border-green-200 pt-2 mt-2">
+                  <p className="text-green-700 text-xs font-semibold uppercase tracking-wide mb-2">Análisis:</p>
+                  {status.solution.evaluation?.feedback && (
+                    <p className="text-green-800 text-sm mb-2">{status.solution.evaluation.feedback}</p>
+                  )}
+                  {status.solution.evaluation?.corrections && status.solution.evaluation.corrections.length > 0 && (
+                    <ul className="space-y-1">
+                      {status.solution.evaluation.corrections.map((correction, idx) => (
+                        <li key={idx} className="text-green-900 text-sm flex gap-2">
+                          <span className="text-green-600 font-medium flex-shrink-0">{idx + 1}.</span>
+                          {correction}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
             </div>
           )}

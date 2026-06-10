@@ -169,6 +169,7 @@ export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: s
           exerciseTopic: exercise.topic,
           studentId,
           imageAttached: true,
+          solutionText: result?.solutionText || "",
           evaluation: result,
         }),
       });

@@ -10,6 +10,7 @@ interface SolutionBody {
   exerciseTopic?: string;
   studentId?: string;
   imageAttached?: boolean;
+  solutionText?: string;
   evaluation?: {
     score?: number;
     feedback?: string;
@@ -116,6 +117,7 @@ export async function POST(request: Request) {
     exerciseTopic: body.exerciseTopic || "",
     studentId,
     imageAttached: true,
+    solutionText: body.solutionText || "",
     evaluation: {
       score: body.evaluation?.score,
       feedback: body.evaluation?.feedback || "",

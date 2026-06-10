@@ -227,9 +227,34 @@ function ChallengeCard({
               ? ` · ${currentStudentSolution.evaluation.score}/100`
               : ""}
           </p>
-          <p className="text-green-800 text-sm whitespace-pre-line">
-            {currentStudentSolution.solutionText}
-          </p>
+          {currentStudentSolution.solutionText && (
+            <div className="mt-1 mb-2">
+              <p className="text-green-700 text-xs font-semibold uppercase tracking-wide mb-1">Tu respuesta:</p>
+              <div className="text-green-800 text-sm space-y-0.5">
+                {currentStudentSolution.solutionText.replace(/\\n/g, "\n").split("\n").map((line, i) => (
+                  <p key={i}>{line || " "}</p>
+                ))}
+              </div>
+            </div>
+          )}
+          {(currentStudentSolution.evaluation?.feedback || (currentStudentSolution.evaluation?.corrections?.length ?? 0) > 0) && (
+            <div className="border-t border-green-200 pt-2">
+              <p className="text-green-700 text-xs font-semibold uppercase tracking-wide mb-2">Análisis:</p>
+              {currentStudentSolution.evaluation?.feedback && (
+                <p className="text-green-800 text-sm mb-2">{currentStudentSolution.evaluation.feedback}</p>
+              )}
+              {currentStudentSolution.evaluation?.corrections && currentStudentSolution.evaluation.corrections.length > 0 && (
+                <ul className="space-y-1">
+                  {currentStudentSolution.evaluation.corrections.map((correction, idx) => (
+                    <li key={idx} className="text-green-900 text-sm flex gap-2">
+                      <span className="text-green-600 font-medium flex-shrink-0">{idx + 1}.</span>
+                      {correction}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -328,12 +353,36 @@ function SolutionSummary({
         </span>
       </div>
 
-      <p className="text-sm mb-3 whitespace-pre-line">
-        {solution?.solutionText || "Sin respuesta cargada"}
-      </p>
+      {solution?.solutionText ? (
+        <div className="mb-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Tu respuesta:</p>
+          <div className="text-sm space-y-0.5">
+            {solution.solutionText.replace(/\\n/g, "\n").split("\n").map((line, i) => (
+              <p key={i}>{line || " "}</p>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground mb-3">Sin respuesta cargada</p>
+      )}
 
-      {solution?.evaluation?.feedback && (
-        <p className="text-sm text-muted-foreground">{solution.evaluation.feedback}</p>
+      {(solution?.evaluation?.feedback || (solution?.evaluation?.corrections?.length ?? 0) > 0) && (
+        <div className="border-t border-border pt-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Análisis:</p>
+          {solution?.evaluation?.feedback && (
+            <p className="text-sm text-muted-foreground mb-2">{solution.evaluation.feedback}</p>
+          )}
+          {solution?.evaluation?.corrections && solution.evaluation.corrections.length > 0 && (
+            <ul className="space-y-1">
+              {solution.evaluation.corrections.map((correction, idx) => (
+                <li key={idx} className="text-sm flex gap-2">
+                  <span className="text-primary font-medium flex-shrink-0">{idx + 1}.</span>
+                  {correction}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );

@@ -11,6 +11,7 @@ interface EvaluationResult {
   score?: number;
   feedback?: string;
   corrections?: string[];
+  solutionText?: string;
 }
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -36,7 +37,8 @@ Devolvé ÚNICAMENTE un objeto JSON válido con la siguiente estructura, sin tex
     "<línea 1 del estudiante: comentario>",
     "<línea 2 del estudiante: comentario>",
     ...
-  ]
+  ],
+  "solutionText": "<transcripción fiel y ordenada de todo lo que escribió el estudiante en la imagen>"
 }
 
 Reglas:
@@ -44,6 +46,7 @@ Reglas:
 - "feedback" debe ser un párrafo breve con la impresión general.
 - Cada elemento de "corrections" debe referenciar un paso o línea concreta de la imagen y explicar si está bien o mal, y por qué.
 - Si un paso es correcto, indicalo. Si es incorrecto, explicá cuál debería ser el resultado correcto.
+- "solutionText" debe ser una transcripción literal y ordenada de todo lo que escribió el estudiante, en texto plano, sin agregar ni omitir pasos. Usá el carácter \n para separar cada paso o línea del manuscrito, respetando la estructura visual del original.
 - No incluyas nada fuera del JSON.
 `.trim();
 }
@@ -62,6 +65,7 @@ function parseEvaluationResult(raw: string): EvaluationResult {
     corrections: Array.isArray(parsed.corrections)
       ? parsed.corrections.map(String)
       : undefined,
+    solutionText: typeof parsed.solutionText === "string" ? parsed.solutionText : undefined,
   };
 }
 
