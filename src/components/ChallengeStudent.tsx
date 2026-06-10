@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Copy, User } from "lucide-react";
+import { ArrowLeft, Check, Copy, Loader2, User, X } from "lucide-react";
 import { Exercise, initialExercises } from "../data/exercises";
 import { getOrCreateStudentId } from "../lib/studentIdentity";
+
+interface StudentResult {
+  publicStudentId: string;
+  nombre: string;
+}
 
 export function ChallengeStudent({ id }: { id: string }) {
   const router = useRouter();
@@ -16,6 +21,11 @@ export function ChallengeStudent({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<StudentResult[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<StudentResult | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("matelab-exercises");
@@ -24,6 +34,49 @@ export function ChallengeStudent({ id }: { id: string }) {
     setExercise(found || null);
     setMyStudentId(getOrCreateStudentId());
   }, [id]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ nombre: searchQuery });
+        if (myStudentId) params.set("exclude", myStudentId);
+        const res = await fetch(`/api/students?${params}`);
+        const data = await res.json();
+        setSearchResults(Array.isArray(data) ? data : []);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchQuery, myStudentId]);
+
+  const handleSelectStudent = (student: StudentResult) => {
+    setSelectedStudent(student);
+    setRecipientStudentId(student.publicStudentId);
+    setSearchQuery("");
+    setSearchResults([]);
+  };
+
+  const handleClearStudent = () => {
+    setSelectedStudent(null);
+    setRecipientStudentId("");
+    setSearchQuery("");
+    setSearchResults([]);
+  };
 
   const handleSendChallenge = async () => {
     const cleanRecipientId = recipientStudentId.trim().toUpperCase();
@@ -102,7 +155,7 @@ export function ChallengeStudent({ id }: { id: string }) {
             <h2 className="mb-3">Desafío enviado correctamente</h2>
 
             <p className="text-muted-foreground text-center mb-6">
-              El desafío quedó preparado para el estudiante con ID <strong>{recipientStudentId.trim().toUpperCase()}</strong>.
+              El desafío quedó preparado para <strong>{selectedStudent?.nombre ?? recipientStudentId.trim().toUpperCase()}</strong>.
             </p>
 
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6 max-w-2xl">
@@ -179,21 +232,61 @@ export function ChallengeStudent({ id }: { id: string }) {
           <label className="block mb-3">
             <span className="font-medium flex items-center gap-2">
               <User className="size-5 text-primary" />
-              ID del compañero
+              Buscar compañero
             </span>
           </label>
 
-          <input
-            value={recipientStudentId}
-            onChange={(e) => setRecipientStudentId(e.target.value.toUpperCase())}
-            placeholder="Ej: ML-1A2B3C4D"
-            className="w-full bg-background border border-border rounded-lg p-3 tracking-wide focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-
-          {recipientStudentId.trim().toUpperCase() === myStudentId && (
-            <p className="text-red-600 text-sm mt-3">
-              No podés enviarte un desafío a tu propio ID.
-            </p>
+          {selectedStudent ? (
+            <div className="flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-lg px-4 py-3 mt-4">
+              <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
+                {selectedStudent.nombre.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{selectedStudent.nombre}</p>
+                <p className="text-xs text-muted-foreground">{selectedStudent.publicStudentId}</p>
+              </div>
+              <button
+                onClick={handleClearStudent}
+                className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Escribí el nombre del compañero..."
+                className="w-full bg-background border border-border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 animate-spin text-muted-foreground" />
+              )}
+              {(searchResults.length > 0 || (searchQuery.length >= 2 && !isSearching)) && (
+                <div className="mt-4 border border-border rounded-lg overflow-hidden shadow-sm">
+                  {searchResults.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-muted-foreground">Sin resultados</p>
+                  ) : (
+                    searchResults.map((student) => (
+                      <button
+                        key={student.publicStudentId}
+                        onClick={() => handleSelectStudent(student)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left border-b border-border last:border-0"
+                      >
+                        <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
+                          {student.nombre.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{student.nombre}</p>
+                          <p className="text-xs text-muted-foreground">{student.publicStudentId}</p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -220,11 +313,7 @@ export function ChallengeStudent({ id }: { id: string }) {
 
         <button
           onClick={handleSendChallenge}
-          disabled={
-            isSending ||
-            !recipientStudentId.trim() ||
-            recipientStudentId.trim().toUpperCase() === myStudentId
-          }
+          disabled={isSending || !selectedStudent}
           className="w-full bg-primary text-primary-foreground py-4 px-6 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSending ? "Enviando desafío..." : "Enviar desafío"}

@@ -1,4 +1,10 @@
 const STUDENT_ID_KEY = "matelab-student-id";
+const STUDENT_NAME_KEY = "matelab-student-name";
+
+const NOMBRES = [
+  "Valentina", "Mateo", "Lucía", "Sebastián", "Camila",
+  "Nicolás", "Sofía", "Tomás", "Martina", "Agustín",
+];
 
 function createStudentId() {
   const randomValue =
@@ -17,6 +23,12 @@ export function getOrCreateStudentId() {
   }
 
   const newId = createStudentId();
+  const randomName = NOMBRES[Math.floor(Math.random() * NOMBRES.length)];
   localStorage.setItem(STUDENT_ID_KEY, newId);
+  localStorage.setItem(STUDENT_NAME_KEY, randomName);
   return newId;
+}
+
+export function getStudentName(): string {
+  return localStorage.getItem(STUDENT_NAME_KEY) ?? "";
 }
