@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BarChart3, Check, Copy, Plus, BookOpen } from "lucide-react";
 import { Exercise } from "../data/exercises";
-import { getOrCreateStudentId, getStudentName } from "../lib/studentIdentity";
+import { getStudentSession, clearStudentSession } from "../lib/studentIdentity";
 
 const AVAILABLE_TOPICS = [
   "Derivadas",
@@ -27,6 +27,7 @@ interface ExerciseStatus {
   latestChallenge?: {
     status: string;
     opponentId: string;
+    opponentName?: string;
     winnerId?: string | null;
     isTie?: boolean;
     role: "sender" | "recipient";
@@ -40,6 +41,7 @@ export function ExerciseList() {
   const [difficultyFilter, setDifficultyFilter] = useState<string>("Todas");
   const [topicFilter, setTopicFilter] = useState<string>("Todos");
   const [myStudentId, setMyStudentId] = useState("");
+  const [myStudentName, setMyStudentName] = useState("");
   const [copiedId, setCopiedId] = useState(false);
   const [exerciseStatuses, setExerciseStatuses] = useState<Record<string, ExerciseStatus>>({});
 
@@ -52,18 +54,10 @@ export function ExerciseList() {
       })
       .catch(() => {});
 
-    const studentId = getOrCreateStudentId();
+    const session = getStudentSession();
+    const studentId = session?.publicStudentId ?? "";
     setMyStudentId(studentId);
-
-    fetch("/api/students", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ studentId, nombre: getStudentName() }),
-    }).catch(() => {
-      // La app puede seguir funcionando localmente aunque MongoDB no este configurado.
-    });
+    setMyStudentName(session?.nombre ?? "");
 
     fetch(`/api/exercise-status?studentId=${encodeURIComponent(studentId)}`)
       .then(async (response) => {
@@ -123,8 +117,8 @@ export function ExerciseList() {
 
         <div className="bg-card border border-border rounded-xl p-4 mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-muted-foreground mb-1">Tu ID para desafíos</p>
-            <p className="tracking-wide">{myStudentId}</p>
+            <p className="font-medium">{myStudentName || myStudentId}</p>
+            <p className="text-xs text-muted-foreground">{myStudentId}</p>
           </div>
           <button
             onClick={handleCopyMyId}
@@ -145,6 +139,12 @@ export function ExerciseList() {
           >
             <BarChart3 className="size-4" />
             Resultados
+          </button>
+          <button
+            onClick={() => { clearStudentSession(); router.push("/login"); }}
+            className="border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors text-sm text-muted-foreground"
+          >
+            Cerrar sesión
           </button>
         </div>
 
@@ -236,6 +236,12 @@ function ExerciseCard({
   const score = status?.solution?.evaluation?.score;
   const challenge = status?.latestChallenge;
 
+  const scoreTheme =
+    typeof score !== "number" ? null :
+    score >= 75 ? { card: "bg-green-50 border-green-200", text: "text-green-900", label: "Muy bien" } :
+    score >= 50 ? { card: "bg-yellow-50 border-yellow-200", text: "text-yellow-900", label: "Parcial" } :
+    { card: "bg-red-50 border-red-200", text: "text-red-900", label: "A revisar" };
+
   return (
     <div className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
@@ -253,18 +259,21 @@ function ExerciseCard({
         <span className="font-medium">Fuente:</span> {exercise.source}
       </div>
 
-      {typeof score === "number" && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-          <p className="text-green-900 font-medium">Resuelto · {score}/100</p>
+      {scoreTheme && (
+        <div className={`${scoreTheme.card} border rounded-lg p-3 mb-4 flex items-center justify-between`}>
+          <p className={`${scoreTheme.text} font-medium`}>{scoreTheme.label}</p>
+          <span className={`${scoreTheme.text} text-sm font-semibold`}>{score}/100</span>
         </div>
       )}
 
       {challenge && (
         <div className="bg-muted/50 border border-border rounded-lg p-3 mb-4">
-          <p className="text-sm text-muted-foreground mb-1">
-            Desafío con <span className="text-foreground">{challenge.opponentId}</span>
-          </p>
-          <p className="font-medium">{getChallengeSummary(challenge, currentStudentId)}</p>
+          <p className="text-sm text-muted-foreground mb-1">Desafío con</p>
+          <p className="font-medium">{challenge.opponentName || challenge.opponentId}</p>
+          {challenge.opponentName && (
+            <p className="text-xs text-muted-foreground">{challenge.opponentId}</p>
+          )}
+          <p className="text-sm mt-1">{getChallengeSummary(challenge, currentStudentId)}</p>
         </div>
       )}
 
@@ -281,7 +290,10 @@ function ExerciseCard({
 function getChallengeSummary(challenge: NonNullable<ExerciseStatus["latestChallenge"]>, currentStudentId: string) {
   if (challenge.status === "completed") {
     if (challenge.isTie) return "Terminado · empate";
-    return `Terminado · ganador: ${challenge.winnerId === currentStudentId ? "vos" : challenge.winnerId}`;
+    const winnerDisplay = challenge.winnerId === currentStudentId
+    ? "vos"
+    : (challenge.opponentId === challenge.winnerId ? (challenge.opponentName || challenge.winnerId) : challenge.winnerId);
+  return `Terminado · ganador: ${winnerDisplay}`;
   }
 
   if (challenge.status === "in-progress") return "En curso";

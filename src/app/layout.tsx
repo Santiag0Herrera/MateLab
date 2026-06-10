@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { AuthGuard } from "../components/AuthGuard";
 import "../styles/index.css";
 
 const jetBrainsMono = JetBrains_Mono({
@@ -22,7 +23,7 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body className={jetBrainsMono.variable}>
         <ThemeToggle />
-        {children}
+        <AuthGuard>{children}</AuthGuard>
       </body>
     </html>
   );

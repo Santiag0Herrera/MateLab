@@ -54,10 +54,12 @@ export async function GET(request: Request) {
 }
 
 function serializeChallengeWithPerspective(challenge: any, studentId: string) {
+  const isSender = challenge.senderId === studentId;
   return {
     ...serializeDocument(challenge),
-    opponentId: challenge.senderId === studentId ? challenge.recipientId : challenge.senderId,
-    role: challenge.senderId === studentId ? "sender" : "recipient",
+    opponentId: isSender ? challenge.recipientId : challenge.senderId,
+    opponentName: isSender ? (challenge.recipientName || "") : (challenge.senderName || ""),
+    role: isSender ? "sender" : "recipient",
   };
 }
 

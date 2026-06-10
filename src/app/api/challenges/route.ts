@@ -8,7 +8,9 @@ interface ChallengeBody {
   exerciseStatement?: string;
   exerciseTopic?: string;
   senderId?: string;
+  senderName?: string;
   recipientId?: string;
+  recipientName?: string;
   message?: string;
 }
 
@@ -117,7 +119,9 @@ export async function POST(request: Request) {
     exerciseStatement: body.exerciseStatement || "",
     exerciseTopic: body.exerciseTopic || "",
     senderId,
+    senderName: body.senderName || "",
     recipientId,
+    recipientName: body.recipientName || "",
     message: body.message || "",
     status: "pending",
     createdAt: now,

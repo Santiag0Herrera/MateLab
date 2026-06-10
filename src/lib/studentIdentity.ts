@@ -1,34 +1,34 @@
-const STUDENT_ID_KEY = "matelab-student-id";
-const STUDENT_NAME_KEY = "matelab-student-name";
+const SESSION_KEY = "matelab-session";
 
-const NOMBRES = [
-  "Valentina", "Mateo", "Lucía", "Sebastián", "Camila",
-  "Nicolás", "Sofía", "Tomás", "Martina", "Agustín",
-];
-
-function createStudentId() {
-  const randomValue =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID().slice(0, 8)
-      : Math.random().toString(36).slice(2, 10);
-
-  return `ML-${randomValue.toUpperCase()}`;
+export interface StudentSession {
+  publicStudentId: string;
+  nombre: string;
 }
 
-export function getOrCreateStudentId() {
-  const storedId = localStorage.getItem(STUDENT_ID_KEY);
-
-  if (storedId) {
-    return storedId;
+export function getStudentSession(): StudentSession | null {
+  if (typeof window === "undefined") return null;
+  const stored = localStorage.getItem(SESSION_KEY);
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return null;
   }
+}
 
-  const newId = createStudentId();
-  const randomName = NOMBRES[Math.floor(Math.random() * NOMBRES.length)];
-  localStorage.setItem(STUDENT_ID_KEY, newId);
-  localStorage.setItem(STUDENT_NAME_KEY, randomName);
-  return newId;
+export function saveStudentSession(session: StudentSession): void {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+export function clearStudentSession(): void {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+// Shims para compatibilidad con componentes existentes
+export function getOrCreateStudentId(): string {
+  return getStudentSession()?.publicStudentId ?? "";
 }
 
 export function getStudentName(): string {
-  return localStorage.getItem(STUDENT_NAME_KEY) ?? "";
+  return getStudentSession()?.nombre ?? "";
 }

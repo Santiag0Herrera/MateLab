@@ -10,6 +10,7 @@ interface EvaluationResult {
   score?: number;
   corrections?: string[];
   feedback?: string;
+  solutionText?: string;
   isFallback?: boolean;
 }
 

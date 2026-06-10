@@ -27,7 +27,9 @@ interface ChallengeResult {
     exerciseStatement: string;
     exerciseTopic: string;
     senderId: string;
+    senderName?: string;
     recipientId: string;
+    recipientName?: string;
     message: string;
     status: string;
     winnerId?: string | null;
@@ -184,11 +186,13 @@ function ChallengeResults({
             <ParticipantScore
               label={challenge.senderId === currentStudentId ? "Vos desafiaste" : "Te desafió"}
               studentId={challenge.senderId}
+              studentName={challenge.senderName}
               solution={solutions.find((solution) => solution.studentId === challenge.senderId)}
             />
             <ParticipantScore
               label={challenge.recipientId === currentStudentId ? "Tu resultado" : "Compañero desafiado"}
               studentId={challenge.recipientId}
+              studentName={challenge.recipientName}
               solution={solutions.find((solution) => solution.studentId === challenge.recipientId)}
             />
           </div>
@@ -198,7 +202,16 @@ function ChallengeResults({
               <p className="text-green-900 font-medium">
                 {challenge.isTie
                   ? "El desafío terminó empatado"
-                  : `Ganador: ${challenge.winnerId === currentStudentId ? "Vos" : challenge.winnerId}`}
+                  : (() => {
+                      if (challenge.winnerId === currentStudentId) return "Ganador: Vos";
+                      const winnerName =
+                        challenge.winnerId === challenge.senderId
+                          ? challenge.senderName || challenge.senderId
+                          : challenge.winnerId === challenge.recipientId
+                            ? challenge.recipientName || challenge.recipientId
+                            : challenge.winnerId;
+                      return `Ganador: ${winnerName}`;
+                    })()}
               </p>
             </div>
           )}
@@ -237,16 +250,20 @@ function AnswerBlock({ title, solution }: { title: string; solution?: Solution }
 function ParticipantScore({
   label,
   studentId,
+  studentName,
   solution,
 }: {
   label: string;
   studentId: string;
+  studentName?: string;
   solution?: Solution;
 }) {
   return (
     <div className="bg-muted/50 border border-border rounded-lg p-4">
       <p className="text-sm text-muted-foreground mb-1">{label}</p>
-      <p className="mb-3">{studentId}</p>
+      <p className="font-medium">{studentName || studentId}</p>
+      {studentName && <p className="text-xs text-muted-foreground mb-3">{studentId}</p>}
+      {!studentName && <div className="mb-3" />}
       {solution ? (
         <>
           <p className="text-2xl font-medium mb-2">

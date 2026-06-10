@@ -18,6 +18,7 @@ interface ExerciseStatus {
   latestChallenge?: {
     status: string;
     opponentId: string;
+    opponentName?: string;
     winnerId?: string | null;
     isTie?: boolean;
     role: "sender" | "recipient";
@@ -82,6 +83,49 @@ export function ExerciseDetail({ id }: { id: string }) {
     );
   }
 
+  const getScoreTheme = (score?: number) => {
+    if (score === undefined || score === null) return {
+      card: "bg-muted/50 border-border",
+      label: "text-muted-foreground",
+      badge: "bg-muted text-foreground",
+      text: "text-foreground",
+      subtext: "text-muted-foreground",
+      bullet: "text-muted-foreground",
+      divider: "border-border",
+      title: "Ya resolviste este ejercicio",
+    };
+    if (score >= 75) return {
+      card: "bg-green-50 border-green-200",
+      label: "text-green-700",
+      badge: "bg-green-100 text-green-800",
+      text: "text-green-900",
+      subtext: "text-green-800",
+      bullet: "text-green-600",
+      divider: "border-green-200",
+      title: "Muy bien resuelto",
+    };
+    if (score >= 50) return {
+      card: "bg-yellow-50 border-yellow-200",
+      label: "text-yellow-700",
+      badge: "bg-yellow-100 text-yellow-800",
+      text: "text-yellow-900",
+      subtext: "text-yellow-800",
+      bullet: "text-yellow-600",
+      divider: "border-yellow-200",
+      title: "Resolución parcial",
+    };
+    return {
+      card: "bg-red-50 border-red-200",
+      label: "text-red-700",
+      badge: "bg-red-100 text-red-800",
+      text: "text-red-900",
+      subtext: "text-red-800",
+      bullet: "text-red-600",
+      divider: "border-red-200",
+      title: "Necesita revisión",
+    };
+  };
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case "Baja": return "text-green-600 bg-green-50";
@@ -140,53 +184,60 @@ export function ExerciseDetail({ id }: { id: string }) {
             )}
           </div>
 
-          {status?.solution && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-green-900 font-medium">Ya resolviste este ejercicio</p>
-                {typeof status.solution.evaluation?.score === "number" && (
-                  <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                    {status.solution.evaluation.score}/100
-                  </span>
+          {status?.solution && (() => {
+            const theme = getScoreTheme(status.solution.evaluation?.score);
+            return (
+              <div className={`${theme.card} border rounded-lg p-4 mb-6`}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className={`${theme.text} font-medium`}>{theme.title}</p>
+                  {typeof status.solution.evaluation?.score === "number" && (
+                    <span className={`${theme.badge} px-3 py-1 rounded-full text-sm font-medium`}>
+                      {status.solution.evaluation.score}/100
+                    </span>
+                  )}
+                </div>
+                {status.solution.solutionText && (
+                  <div className={`border-t ${theme.divider} pt-2 mt-2`}>
+                    <p className={`${theme.label} text-xs font-semibold uppercase tracking-wide mb-1`}>Tu respuesta:</p>
+                    <div className={`${theme.text} text-sm space-y-0.5`}>
+                      {status.solution.solutionText.replace(/\\n/g, "\n").split("\n").map((line, i) => (
+                        <p key={i}>{line || " "}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(status.solution.evaluation?.feedback || (status.solution.evaluation?.corrections?.length ?? 0) > 0) && (
+                  <div className={`border-t ${theme.divider} pt-2 mt-2`}>
+                    <p className={`${theme.label} text-xs font-semibold uppercase tracking-wide mb-2`}>Análisis:</p>
+                    {status.solution.evaluation?.feedback && (
+                      <p className={`${theme.subtext} text-sm mb-2`}>{status.solution.evaluation.feedback}</p>
+                    )}
+                    {status.solution.evaluation?.corrections && status.solution.evaluation.corrections.length > 0 && (
+                      <ul className="space-y-1">
+                        {status.solution.evaluation.corrections.map((correction, idx) => (
+                          <li key={idx} className={`${theme.text} text-sm flex gap-2`}>
+                            <span className={`${theme.bullet} font-medium flex-shrink-0`}>{idx + 1}.</span>
+                            {correction}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 )}
               </div>
-              {status.solution.solutionText && (
-                <div className="border-t border-green-200 pt-2 mt-2">
-                  <p className="text-green-700 text-xs font-semibold uppercase tracking-wide mb-1">Tu respuesta:</p>
-                  <div className="text-green-900 text-sm space-y-0.5">
-                    {status.solution.solutionText.replace(/\\n/g, "\n").split("\n").map((line, i) => (
-                      <p key={i}>{line || " "}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {(status.solution.evaluation?.feedback || (status.solution.evaluation?.corrections?.length ?? 0) > 0) && (
-                <div className="border-t border-green-200 pt-2 mt-2">
-                  <p className="text-green-700 text-xs font-semibold uppercase tracking-wide mb-2">Análisis:</p>
-                  {status.solution.evaluation?.feedback && (
-                    <p className="text-green-800 text-sm mb-2">{status.solution.evaluation.feedback}</p>
-                  )}
-                  {status.solution.evaluation?.corrections && status.solution.evaluation.corrections.length > 0 && (
-                    <ul className="space-y-1">
-                      {status.solution.evaluation.corrections.map((correction, idx) => (
-                        <li key={idx} className="text-green-900 text-sm flex gap-2">
-                          <span className="text-green-600 font-medium flex-shrink-0">{idx + 1}.</span>
-                          {correction}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           {status?.latestChallenge && (
             <div className="bg-muted/50 border border-border rounded-lg p-4 mb-6">
-              <p className="text-sm text-muted-foreground mb-1">
-                Desafío con <span className="text-foreground">{status.latestChallenge.opponentId}</span>
+              <p className="text-sm text-muted-foreground mb-1">Desafío con</p>
+              <p className="font-medium">
+                {status.latestChallenge.opponentName || status.latestChallenge.opponentId}
               </p>
-              <p className="font-medium">{getChallengeSummary(status.latestChallenge, studentId)}</p>
+              {status.latestChallenge.opponentName && (
+                <p className="text-xs text-muted-foreground">{status.latestChallenge.opponentId}</p>
+              )}
+              <p className="text-sm mt-2">{getChallengeSummary(status.latestChallenge, studentId)}</p>
             </div>
           )}
 
@@ -222,7 +273,10 @@ export function ExerciseDetail({ id }: { id: string }) {
 function getChallengeSummary(challenge: NonNullable<ExerciseStatus["latestChallenge"]>, currentStudentId: string) {
   if (challenge.status === "completed") {
     if (challenge.isTie) return "Terminado · empate";
-    return `Terminado · ganador: ${challenge.winnerId === currentStudentId ? "vos" : challenge.winnerId}`;
+    const winnerDisplay = challenge.winnerId === currentStudentId
+    ? "vos"
+    : (challenge.opponentId === challenge.winnerId ? (challenge.opponentName || challenge.winnerId) : challenge.winnerId);
+  return `Terminado · ganador: ${winnerDisplay}`;
   }
 
   if (challenge.status === "in-progress") return "En curso";

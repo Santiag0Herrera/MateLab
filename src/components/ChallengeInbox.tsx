@@ -11,7 +11,9 @@ interface Challenge {
   exerciseStatement: string;
   exerciseTopic: string;
   senderId: string;
+  senderName?: string;
   recipientId: string;
+  recipientName?: string;
   message: string;
   status: string;
   winnerId?: string | null;
@@ -138,6 +140,7 @@ export function ChallengeInbox() {
                 currentStudentId={studentId}
                 activeTab={activeTab}
                 onSolve={() => router.push(`/solve/${challenge.exerciseId}?challenge=${challenge._id}`)}
+                onDetail={() => router.push(`/challenges/${challenge._id}`)}
               />
             ))}
           </div>
@@ -152,11 +155,13 @@ function ChallengeCard({
   currentStudentId,
   activeTab,
   onSolve,
+  onDetail,
 }: {
   challenge: Challenge;
   currentStudentId: string;
   activeTab: "received" | "sent";
   onSolve: () => void;
+  onDetail: () => void;
 }) {
   const senderSolution = challenge.solutions?.find(
     (solution) => solution.studentId.toUpperCase() === challenge.senderId.toUpperCase()
@@ -180,8 +185,9 @@ function ChallengeCard({
   const currentStudentSolved = !!currentStudentSolution;
 
   return (
-    <div className="bg-card border border-border rounded-xl p-5">
-      <div className="flex items-start justify-between gap-3 mb-4">
+    <div className="bg-card border border-border rounded-xl p-5 flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
         <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">
           {challenge.exerciseTopic || "Ejercicio"}
         </span>
@@ -195,86 +201,74 @@ function ChallengeCard({
         </div>
       </div>
 
-      <p className="mb-4">{challenge.exerciseStatement}</p>
+      {/* Enunciado truncado */}
+      <p className="text-sm line-clamp-2 text-muted-foreground">{challenge.exerciseStatement}</p>
 
-      <div className="bg-muted/50 border border-border rounded-lg p-3 mb-4">
-        <p className="text-sm text-muted-foreground mb-1">
-          {activeTab === "received" ? "Enviado por" : "Enviado a"}
-        </p>
-        <p>
-          {activeTab === "received" ? challenge.senderId : challenge.recipientId}
-        </p>
+      {/* Participante */}
+      <div className="text-sm">
+        <span className="text-muted-foreground mr-1">
+          {activeTab === "received" ? "De:" : "Para:"}
+        </span>
+        <span className="font-medium">
+          {activeTab === "received"
+            ? challenge.senderName || challenge.senderId
+            : challenge.recipientName || challenge.recipientId}
+        </span>
+        {(activeTab === "received" ? challenge.senderName : challenge.recipientName) && (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {activeTab === "received" ? challenge.senderId : challenge.recipientId}
+          </p>
+        )}
       </div>
 
-      {challenge.status !== "completed" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+      {/* Estado participantes o resultado */}
+      {challenge.status === "completed" ? (
+        <div className={`text-sm font-medium px-3 py-2 rounded-lg ${challenge.isTie ? "bg-muted text-foreground" : "bg-green-50 text-green-800"}`}>
+          {challenge.isTie
+            ? "Empate"
+            : (() => {
+                const winnerId = challenge.winnerId;
+                if (winnerId === currentStudentId) return "Ganador: Vos";
+                const winnerName =
+                  winnerId === challenge.senderId
+                    ? challenge.senderName || challenge.senderId
+                    : winnerId === challenge.recipientId
+                      ? challenge.recipientName || challenge.recipientId
+                      : winnerId;
+                return `Ganador: ${winnerName}`;
+              })()}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <ParticipantStatus label="Vos" solved={currentStudentSolved} />
           <ParticipantStatus
-            label="Tu estado"
-            solved={currentStudentSolved}
-          />
-          <ParticipantStatus
-            label={`Estado de ${opponentId}`}
+            label={
+              opponentId === challenge.senderId
+                ? challenge.senderName || challenge.senderId
+                : challenge.recipientName || challenge.recipientId
+            }
             solved={opponentSolved}
           />
         </div>
       )}
 
-      {challenge.status !== "completed" && currentStudentSolution && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-          <p className="text-green-900 font-medium mb-1">
-            Tu respuesta ya está cargada
-            {typeof currentStudentSolution.evaluation?.score === "number"
-              ? ` · ${currentStudentSolution.evaluation.score}/100`
-              : ""}
-          </p>
-          {currentStudentSolution.solutionText && (
-            <div className="mt-1 mb-2">
-              <p className="text-green-700 text-xs font-semibold uppercase tracking-wide mb-1">Tu respuesta:</p>
-              <div className="text-green-800 text-sm space-y-0.5">
-                {currentStudentSolution.solutionText.replace(/\\n/g, "\n").split("\n").map((line, i) => (
-                  <p key={i}>{line || " "}</p>
-                ))}
-              </div>
-            </div>
-          )}
-          {(currentStudentSolution.evaluation?.feedback || (currentStudentSolution.evaluation?.corrections?.length ?? 0) > 0) && (
-            <div className="border-t border-green-200 pt-2">
-              <p className="text-green-700 text-xs font-semibold uppercase tracking-wide mb-2">Análisis:</p>
-              {currentStudentSolution.evaluation?.feedback && (
-                <p className="text-green-800 text-sm mb-2">{currentStudentSolution.evaluation.feedback}</p>
-              )}
-              {currentStudentSolution.evaluation?.corrections && currentStudentSolution.evaluation.corrections.length > 0 && (
-                <ul className="space-y-1">
-                  {currentStudentSolution.evaluation.corrections.map((correction, idx) => (
-                    <li key={idx} className="text-green-900 text-sm flex gap-2">
-                      <span className="text-green-600 font-medium flex-shrink-0">{idx + 1}.</span>
-                      {correction}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {challenge.message && (
-        <p className="text-sm text-muted-foreground mb-4">{challenge.message}</p>
-      )}
-
-      {challenge.status === "completed" && (
-        <ChallengeSummary challenge={challenge} currentStudentId={currentStudentId} />
-      )}
-
-      {challenge.status !== "completed" && (
+      {/* Acciones */}
+      <div className="flex gap-2 mt-auto">
+        {challenge.status !== "completed" && !currentStudentSolved && (
+          <button
+            onClick={onSolve}
+            className="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:opacity-90 transition-opacity text-sm"
+          >
+            Resolver
+          </button>
+        )}
         <button
-          onClick={onSolve}
-          disabled={currentStudentSolved}
-          className="w-full bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={onDetail}
+          className="flex-1 border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors text-sm"
         >
-          {currentStudentSolved ? `Esperando a ${opponentId}` : "Resolver desafío"}
+          Ver detalle
         </button>
-      )}
+      </div>
     </div>
   );
 }
@@ -290,103 +284,6 @@ function ParticipantStatus({ label, solved }: { label: string; solved: boolean }
   );
 }
 
-function ChallengeSummary({
-  challenge,
-  currentStudentId,
-}: {
-  challenge: Challenge;
-  currentStudentId: string;
-}) {
-  const senderSolution = challenge.solutions?.find(
-    (solution) => solution.studentId === challenge.senderId
-  );
-  const recipientSolution = challenge.solutions?.find(
-    (solution) => solution.studentId === challenge.recipientId
-  );
-
-  return (
-    <div className="border-t border-border pt-4 mt-4">
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-        <p className="text-green-900 font-medium">
-          {challenge.isTie
-            ? "El desafío terminó empatado"
-            : `Ganador: ${challenge.winnerId === currentStudentId ? "Vos" : challenge.winnerId}`}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3">
-        <SolutionSummary
-          label={challenge.senderId === currentStudentId ? "Tu respuesta" : "Respuesta del desafiante"}
-          studentId={challenge.senderId}
-          solution={senderSolution}
-        />
-        <SolutionSummary
-          label={challenge.recipientId === currentStudentId ? "Tu respuesta" : "Respuesta del compañero"}
-          studentId={challenge.recipientId}
-          solution={recipientSolution}
-        />
-      </div>
-    </div>
-  );
-}
-
-function SolutionSummary({
-  label,
-  studentId,
-  solution,
-}: {
-  label: string;
-  studentId: string;
-  solution?: ChallengeSolution;
-}) {
-  return (
-    <div className="bg-muted/50 border border-border rounded-lg p-4">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <p className="text-sm text-muted-foreground mb-1">{label}</p>
-          <p className="text-sm">{studentId}</p>
-        </div>
-        <span className="bg-card border border-border rounded-full px-3 py-1 text-sm">
-          {typeof solution?.evaluation?.score === "number"
-            ? `${solution.evaluation.score}/100`
-            : "Sin puntaje"}
-        </span>
-      </div>
-
-      {solution?.solutionText ? (
-        <div className="mb-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Tu respuesta:</p>
-          <div className="text-sm space-y-0.5">
-            {solution.solutionText.replace(/\\n/g, "\n").split("\n").map((line, i) => (
-              <p key={i}>{line || " "}</p>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground mb-3">Sin respuesta cargada</p>
-      )}
-
-      {(solution?.evaluation?.feedback || (solution?.evaluation?.corrections?.length ?? 0) > 0) && (
-        <div className="border-t border-border pt-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Análisis:</p>
-          {solution?.evaluation?.feedback && (
-            <p className="text-sm text-muted-foreground mb-2">{solution.evaluation.feedback}</p>
-          )}
-          {solution?.evaluation?.corrections && solution.evaluation.corrections.length > 0 && (
-            <ul className="space-y-1">
-              {solution.evaluation.corrections.map((correction, idx) => (
-                <li key={idx} className="text-sm flex gap-2">
-                  <span className="text-primary font-medium flex-shrink-0">{idx + 1}.</span>
-                  {correction}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function getStatusText(status: string) {
   switch (status) {

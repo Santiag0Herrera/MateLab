@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Copy, Loader2, User, X } from "lucide-react";
 import { Exercise } from "../data/exercises";
-import { getOrCreateStudentId } from "../lib/studentIdentity";
+import { getOrCreateStudentId, getStudentName } from "../lib/studentIdentity";
 
 interface StudentResult {
   publicStudentId: string;
@@ -29,8 +29,11 @@ export function ChallengeStudent({ id }: { id: string }) {
   const [isSearching, setIsSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [myName, setMyName] = useState("");
+
   useEffect(() => {
     setMyStudentId(getOrCreateStudentId());
+    setMyName(getStudentName());
 
     fetch(`/api/exercises/${id}`)
       .then(async (res) => {
@@ -104,7 +107,9 @@ export function ChallengeStudent({ id }: { id: string }) {
           exerciseStatement: exercise?.statement,
           exerciseTopic: exercise?.topic,
           senderId: myStudentId,
+          senderName: myName,
           recipientId: cleanRecipientId,
+          recipientName: selectedStudent?.nombre || "",
           message,
         }),
       });

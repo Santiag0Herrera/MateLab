@@ -3,14 +3,29 @@ import { getDb } from "../../../lib/mongodb";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const studentId = searchParams.get("studentId")?.trim().toUpperCase();
   const nombre = searchParams.get("nombre")?.trim();
   const exclude = searchParams.get("exclude")?.trim().toUpperCase();
 
+  const db = await getDb();
+
+  // Búsqueda exacta por ID (para login)
+  if (studentId) {
+    const student = await db
+      .collection("students")
+      .findOne({ publicStudentId: studentId }, { projection: { publicStudentId: 1, nombre: 1, _id: 0 } });
+
+    if (!student) {
+      return NextResponse.json({ error: "Estudiante no encontrado." }, { status: 404 });
+    }
+    return NextResponse.json(student);
+  }
+
+  // Búsqueda por nombre (para desafiar)
   if (!nombre || nombre.length < 2) {
     return NextResponse.json([]);
   }
 
-  const db = await getDb();
   const query: Record<string, unknown> = {
     nombre: { $regex: nombre, $options: "i" },
   };
