@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  let body: { studentId?: string };
+  let body: { studentId?: string; nombre?: string };
 
   try {
     body = await request.json();
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
   }
 
   const publicStudentId = body.studentId?.trim().toUpperCase();
+  const nombre = body.nombre?.trim();
 
   if (!publicStudentId) {
     return NextResponse.json({ error: "studentId is required." }, { status: 400 });
@@ -45,19 +46,17 @@ export async function POST(request: Request) {
   const db = await getDb();
   const now = new Date();
 
+  const setFields: Record<string, unknown> = { publicStudentId, updatedAt: now };
+  if (nombre) setFields.nombre = nombre;
+
   await db.collection("students").updateOne(
     { publicStudentId },
     {
-      $set: {
-        publicStudentId,
-        updatedAt: now,
-      },
-      $setOnInsert: {
-        createdAt: now,
-      },
+      $set: setFields,
+      $setOnInsert: { createdAt: now },
     },
     { upsert: true }
   );
 
-  return NextResponse.json({ student: { publicStudentId } });
+  return NextResponse.json({ student: { publicStudentId, nombre } });
 }

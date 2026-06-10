@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BarChart3, Check, Copy, Plus, BookOpen } from "lucide-react";
-import { Exercise, initialExercises } from "../data/exercises";
-import { getOrCreateStudentId } from "../lib/studentIdentity";
+import { Exercise } from "../data/exercises";
+import { getOrCreateStudentId, getStudentName } from "../lib/studentIdentity";
 
 const AVAILABLE_TOPICS = [
   "Derivadas",
@@ -35,7 +35,7 @@ interface ExerciseStatus {
 
 export function ExerciseList() {
   const router = useRouter();
-  const [exercises, setExercises] = useState<Exercise[]>(initialExercises);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
   const [sourceFilter, setSourceFilter] = useState<string>("Todas");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("Todas");
   const [topicFilter, setTopicFilter] = useState<string>("Todos");
@@ -43,12 +43,14 @@ export function ExerciseList() {
   const [copiedId, setCopiedId] = useState(false);
   const [exerciseStatuses, setExerciseStatuses] = useState<Record<string, ExerciseStatus>>({});
 
-  // Load exercises and selected topic from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem("matelab-exercises");
-    if (stored) {
-      setExercises(JSON.parse(stored));
-    }
+    fetch("/api/exercises")
+      .then(async (res) => {
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        if (Array.isArray(data)) setExercises(data);
+      })
+      .catch(() => {});
 
     const studentId = getOrCreateStudentId();
     setMyStudentId(studentId);
@@ -58,7 +60,7 @@ export function ExerciseList() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ studentId }),
+      body: JSON.stringify({ studentId, nombre: getStudentName() }),
     }).catch(() => {
       // La app puede seguir funcionando localmente aunque MongoDB no este configurado.
     });
