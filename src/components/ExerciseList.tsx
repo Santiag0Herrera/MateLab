@@ -2,7 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, Check, Copy, Plus, BookOpen, Globe2, Loader2, Lock } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  BookOpenCheck,
+  Check,
+  Copy,
+  Globe2,
+  Loader2,
+  Lock,
+  Plus,
+  Target,
+} from "lucide-react";
 import { Exercise } from "../data/exercises";
 import {
   getStudentSession,
@@ -214,6 +225,13 @@ export function ExerciseList() {
               Resultados
             </button>
             <button
+              onClick={() => router.push("/preparation")}
+              className="border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2"
+            >
+              <Target className="size-4" />
+              Preparación
+            </button>
+            <button
               onClick={() => { clearStudentSession(); router.push("/login"); }}
               className="border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors text-sm text-muted-foreground"
             >
@@ -229,13 +247,22 @@ export function ExerciseList() {
         </div>
 
         {/* Upload Button */}
-        <button
-          onClick={() => router.push("/upload")}
-          className="mb-6 bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2"
-        >
-          <Plus className="size-5" />
-          Cargar nuevo ejercicio
-        </button>
+        <div className="mb-6 flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => router.push("/upload")}
+            className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+          >
+            <Plus className="size-5" />
+            Cargar nuevo ejercicio
+          </button>
+          <button
+            onClick={() => router.push("/exam-setup")}
+            className="border border-border px-6 py-3 rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2"
+          >
+            <BookOpenCheck className="size-5" />
+            Configurar examen
+          </button>
+        </div>
 
         {/* Filters */}
         <div className="bg-card border border-border rounded-xl p-4 mb-6">
