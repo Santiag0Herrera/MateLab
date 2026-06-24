@@ -178,12 +178,6 @@ export function ChallengeStudent({ id }: { id: string }) {
               El desafío quedó preparado para <strong>{selectedStudent?.nombre ?? recipientStudentId.trim().toUpperCase()}</strong>.
             </p>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6 max-w-2xl">
-              <p className="text-blue-900 text-center text-sm">
-                Esta pantalla guarda el desafío en este navegador como demo. Para producción, el próximo paso es persistirlo en una base de datos compartida.
-              </p>
-            </div>
-
             <button
               onClick={() => router.push(`/exercise/${id}`)}
               className="bg-primary text-primary-foreground py-3 px-8 rounded-lg hover:opacity-90 transition-opacity"
