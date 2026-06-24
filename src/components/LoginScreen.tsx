@@ -35,7 +35,11 @@ export function LoginScreen() {
         return;
       }
 
-      saveStudentSession({ publicStudentId: data.publicStudentId, nombre: data.nombre || cleanId });
+      saveStudentSession({
+        publicStudentId: data.publicStudentId,
+        nombre: data.nombre || cleanId,
+        isPublic: data.isPublic !== false,
+      });
       router.replace("/exercises");
     } catch {
       setError("Error de conexión. Intentá de nuevo.");

@@ -2,9 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, Check, Copy, Plus, BookOpen } from "lucide-react";
+import { BarChart3, Check, Copy, Plus, BookOpen, Globe2, Loader2, Lock } from "lucide-react";
 import { Exercise } from "../data/exercises";
-import { getStudentSession, clearStudentSession } from "../lib/studentIdentity";
+import {
+  getStudentSession,
+  clearStudentSession,
+  saveStudentSession,
+} from "../lib/studentIdentity";
 
 const AVAILABLE_TOPICS = [
   "Derivadas",
@@ -43,6 +47,9 @@ export function ExerciseList() {
   const [myStudentId, setMyStudentId] = useState("");
   const [myStudentName, setMyStudentName] = useState("");
   const [copiedId, setCopiedId] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
+  const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
+  const [privacyError, setPrivacyError] = useState("");
   const [exerciseStatuses, setExerciseStatuses] = useState<Record<string, ExerciseStatus>>({});
 
   useEffect(() => {
@@ -58,6 +65,24 @@ export function ExerciseList() {
     const studentId = session?.publicStudentId ?? "";
     setMyStudentId(studentId);
     setMyStudentName(session?.nombre ?? "");
+    setIsPublic(session?.isPublic !== false);
+
+    if (studentId) {
+      fetch(`/api/students?studentId=${encodeURIComponent(studentId)}`)
+        .then(async (response) => {
+          const payload = await response.json();
+          if (!response.ok) throw new Error();
+
+          const nextIsPublic = payload.isPublic !== false;
+          setIsPublic(nextIsPublic);
+          saveStudentSession({
+            publicStudentId: payload.publicStudentId,
+            nombre: payload.nombre || session?.nombre || studentId,
+            isPublic: nextIsPublic,
+          });
+        })
+        .catch(() => {});
+    }
 
     fetch(`/api/exercise-status?studentId=${encodeURIComponent(studentId)}`)
       .then(async (response) => {
@@ -80,6 +105,38 @@ export function ExerciseList() {
     await navigator.clipboard.writeText(myStudentId);
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 1800);
+  };
+
+  const handlePrivacyChange = async () => {
+    const nextIsPublic = !isPublic;
+    setIsUpdatingPrivacy(true);
+    setPrivacyError("");
+
+    try {
+      const response = await fetch("/api/students", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: myStudentId, isPublic: nextIsPublic }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "No se pudo actualizar la privacidad.");
+      }
+
+      setIsPublic(payload.isPublic !== false);
+      saveStudentSession({
+        publicStudentId: payload.publicStudentId,
+        nombre: payload.nombre || myStudentName || myStudentId,
+        isPublic: payload.isPublic !== false,
+      });
+    } catch (error) {
+      setPrivacyError(
+        error instanceof Error ? error.message : "No se pudo actualizar la privacidad."
+      );
+    } finally {
+      setIsUpdatingPrivacy(false);
+    }
   };
 
   const sources = ["Todas", "Precargado", "Subido por alumno", "Generado por IA"];
@@ -115,37 +172,60 @@ export function ExerciseList() {
           </p>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-4 mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="font-medium">{myStudentName || myStudentId}</p>
-            <p className="text-xs text-muted-foreground">{myStudentId}</p>
+        <div className="bg-card border border-border rounded-xl p-4 mb-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex-1">
+              <p className="font-medium">{myStudentName || myStudentId}</p>
+              <p className="text-xs text-muted-foreground">{myStudentId}</p>
+            </div>
+            <button
+              onClick={handlePrivacyChange}
+              disabled={isUpdatingPrivacy || !myStudentId}
+              className="border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              title={isPublic ? "Podés aparecer en búsquedas y recibir desafíos" : "No aparecés en búsquedas ni recibís desafíos"}
+            >
+              {isUpdatingPrivacy ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : isPublic ? (
+                <Globe2 className="size-4 text-green-600" />
+              ) : (
+                <Lock className="size-4 text-muted-foreground" />
+              )}
+              Perfil {isPublic ? "público" : "privado"}
+            </button>
+            <button
+              onClick={handleCopyMyId}
+              className="border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2"
+            >
+              {copiedId ? <Check className="size-4 text-green-600" /> : <Copy className="size-4" />}
+              {copiedId ? "Copiado" : "Copiar ID"}
+            </button>
+            <button
+              onClick={() => router.push("/challenges")}
+              className="bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:opacity-90 transition-opacity"
+            >
+              Mis desafíos
+            </button>
+            <button
+              onClick={() => router.push("/results")}
+              className="border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2"
+            >
+              <BarChart3 className="size-4" />
+              Resultados
+            </button>
+            <button
+              onClick={() => { clearStudentSession(); router.push("/login"); }}
+              className="border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors text-sm text-muted-foreground"
+            >
+              Cerrar sesión
+            </button>
           </div>
-          <button
-            onClick={handleCopyMyId}
-            className="border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2"
-          >
-            {copiedId ? <Check className="size-4 text-green-600" /> : <Copy className="size-4" />}
-            {copiedId ? "Copiado" : "Copiar ID"}
-          </button>
-          <button
-            onClick={() => router.push("/challenges")}
-            className="bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:opacity-90 transition-opacity"
-          >
-            Mis desafíos
-          </button>
-          <button
-            onClick={() => router.push("/results")}
-            className="border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2"
-          >
-            <BarChart3 className="size-4" />
-            Resultados
-          </button>
-          <button
-            onClick={() => { clearStudentSession(); router.push("/login"); }}
-            className="border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors text-sm text-muted-foreground"
-          >
-            Cerrar sesión
-          </button>
+          <p className="text-xs text-muted-foreground mt-3">
+            {isPublic
+              ? "Tu perfil aparece en la búsqueda y otros estudiantes pueden desafiarte."
+              : "Tu perfil no aparece en la búsqueda y no pueden enviarte desafíos nuevos."}
+          </p>
+          {privacyError && <p className="text-sm text-red-700 mt-2">{privacyError}</p>}
         </div>
 
         {/* Upload Button */}

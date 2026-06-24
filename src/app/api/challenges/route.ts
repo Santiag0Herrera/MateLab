@@ -95,24 +95,30 @@ export async function POST(request: Request) {
   const db = await getDb();
   const now = new Date();
 
-  await Promise.all([
-    db.collection("students").updateOne(
-      { publicStudentId: senderId },
-      {
-        $set: { publicStudentId: senderId, updatedAt: now },
-        $setOnInsert: { createdAt: now },
-      },
-      { upsert: true }
-    ),
-    db.collection("students").updateOne(
-      { publicStudentId: recipientId },
-      {
-        $set: { publicStudentId: recipientId, updatedAt: now },
-        $setOnInsert: { createdAt: now },
-      },
-      { upsert: true }
-    ),
-  ]);
+  const recipient = await db.collection("students").findOne(
+    { publicStudentId: recipientId },
+    { projection: { isPublic: 1 } }
+  );
+
+  if (!recipient) {
+    return NextResponse.json({ error: "El estudiante destinatario no existe." }, { status: 404 });
+  }
+
+  if (recipient.isPublic === false) {
+    return NextResponse.json(
+      { error: "Este estudiante no está disponible para recibir desafíos." },
+      { status: 403 }
+    );
+  }
+
+  await db.collection("students").updateOne(
+    { publicStudentId: senderId },
+    {
+      $set: { publicStudentId: senderId, updatedAt: now },
+      $setOnInsert: { createdAt: now, isPublic: true },
+    },
+    { upsert: true }
+  );
 
   const result = await db.collection("challenges").insertOne({
     exerciseId: body.exerciseId,

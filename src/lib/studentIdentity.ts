@@ -3,6 +3,7 @@ const SESSION_KEY = "matelab-session";
 export interface StudentSession {
   publicStudentId: string;
   nombre: string;
+  isPublic?: boolean;
 }
 
 export function getStudentSession(): StudentSession | null {
