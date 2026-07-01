@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, HelpCircle, Upload } from "lucide-react";
 import { MathText } from "./MathText";
+import { AVAILABLE_TOPICS } from "../data/exercises";
 import {
   Dialog,
   DialogContent,
@@ -19,17 +20,6 @@ const FORMAT_EXAMPLES = [
   { label: "Límite", code: "\\lim_{x \\to 0}" },
   { label: "Integral", code: "\\int_{a}^{b} f(x)\\,dx" },
   { label: "Derivada", code: "\\frac{d}{dx}f(x)" },
-];
-
-const AVAILABLE_TOPICS = [
-  "Derivadas",
-  "Límites",
-  "Integrales",
-  "Funciones",
-  "Matrices",
-  "Ecuaciones",
-  "Álgebra",
-  "Probabilidad"
 ];
 
 export function ExerciseUpload() {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, BookOpenCheck, Plus, SlidersHorizontal } from "lucide-react";
-import { Exercise } from "../data/exercises";
+import { AVAILABLE_TOPICS, Exercise } from "../data/exercises";
 import { MathText } from "./MathText";
 import { getStudentSession } from "../lib/studentIdentity";
 import {
@@ -12,17 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
-
-const AVAILABLE_TOPICS = [
-  "Derivadas",
-  "Límites",
-  "Integrales",
-  "Funciones",
-  "Matrices",
-  "Ecuaciones",
-  "Álgebra",
-  "Probabilidad"
-];
 
 interface ExerciseStatus {
   solution?: {

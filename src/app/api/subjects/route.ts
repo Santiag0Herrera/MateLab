@@ -37,23 +37,31 @@ interface SubjectDocument {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const studentId = searchParams.get("studentId")?.trim().toUpperCase();
+
+  if (!studentId) {
+    return NextResponse.json({ error: "studentId is required." }, { status: 400 });
+  }
+
   const db = await getDb();
   const [subjects, solutions] = await Promise.all([
     db.collection<SubjectDocument>("subjects").find({}).sort({ name: 1 }).toArray(),
-    studentId
-      ? db
-          .collection("solutions")
-          .find(
-            { studentId },
-            { projection: { exerciseTopic: 1, evaluation: 1, createdAt: 1 } }
-          )
-          .toArray()
-      : Promise.resolve([]),
+    db
+      .collection("solutions")
+      .find(
+        { studentId },
+        { projection: { exerciseTopic: 1, evaluation: 1, createdAt: 1 } }
+      )
+      .toArray(),
   ]);
 
-  return NextResponse.json(
-    subjects.map((subject) => serializeSubject(subject, studentId ? solutions : null))
-  );
+  const ownSubjects = subjects
+    .map((subject) => ({
+      ...subject,
+      exams: (subject.exams || []).filter((exam: any) => exam.createdBy === studentId),
+    }))
+    .filter((subject) => subject.exams.length > 0);
+
+  return NextResponse.json(ownSubjects.map((subject) => serializeSubject(subject, solutions)));
 }
 
 export async function POST(request: Request) {
@@ -68,7 +76,7 @@ export async function POST(request: Request) {
   const subjectName = body.subjectName?.trim();
   const examName = body.examName?.trim();
   const passingScore = Number(body.passingScore);
-  const createdBy = body.createdBy?.trim().toUpperCase() || null;
+  const createdBy = body.createdBy?.trim().toUpperCase();
   const topics = (body.topics || []).map((topic) => ({
     name: topic.name?.trim() || "",
     normalizedName: normalizeName(topic.name || ""),
@@ -79,6 +87,13 @@ export async function POST(request: Request) {
   if (!subjectName || !examName) {
     return NextResponse.json(
       { error: "La materia y el nombre del examen son requeridos." },
+      { status: 400 }
+    );
+  }
+
+  if (!createdBy) {
+    return NextResponse.json(
+      { error: "No se encontró el estudiante de la sesión." },
       { status: 400 }
     );
   }
@@ -159,7 +174,8 @@ export async function POST(request: Request) {
 
   if (
     existingSubject?.exams?.some(
-      (exam: { normalizedName?: string }) => exam.normalizedName === normalizedExamName
+      (exam: { normalizedName?: string; createdBy?: string }) =>
+        exam.normalizedName === normalizedExamName && exam.createdBy === createdBy
     )
   ) {
     return NextResponse.json(

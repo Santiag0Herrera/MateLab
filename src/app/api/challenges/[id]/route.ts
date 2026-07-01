@@ -38,6 +38,67 @@ export async function GET(
   });
 }
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  if (!ObjectId.isValid(id)) {
+    return NextResponse.json({ error: "ID inválido." }, { status: 400 });
+  }
+
+  let body: { studentId?: string; action?: string };
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const studentId = body.studentId?.trim().toUpperCase();
+  const action = body.action;
+
+  if (!studentId || (action !== "accept" && action !== "reject")) {
+    return NextResponse.json(
+      { error: "studentId y action ('accept' o 'reject') son requeridos." },
+      { status: 400 }
+    );
+  }
+
+  const db = await getDb();
+  const challenge = await db.collection("challenges").findOne({ _id: new ObjectId(id) });
+
+  if (!challenge) {
+    return NextResponse.json({ error: "Desafío no encontrado." }, { status: 404 });
+  }
+
+  if (challenge.recipientId !== studentId) {
+    return NextResponse.json(
+      { error: "Solo el destinatario puede responder este desafío." },
+      { status: 403 }
+    );
+  }
+
+  if ((challenge.responseStatus ?? "pending") !== "pending") {
+    return NextResponse.json(
+      { error: "Este desafío ya fue respondido." },
+      { status: 409 }
+    );
+  }
+
+  const now = new Date();
+  const update =
+    action === "accept"
+      ? { responseStatus: "accepted", acceptedAt: now, updatedAt: now }
+      : { responseStatus: "rejected", rejectedAt: now, updatedAt: now };
+
+  await db.collection("challenges").updateOne({ _id: new ObjectId(id) }, { $set: update });
+  const updatedChallenge = await db.collection("challenges").findOne({ _id: new ObjectId(id) });
+
+  return NextResponse.json(serializeChallenge(updatedChallenge));
+}
+
 function serializeChallenge(challenge: any) {
   return {
     ...challenge,

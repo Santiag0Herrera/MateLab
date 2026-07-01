@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Inbox, Send } from "lucide-react";
 import { getOrCreateStudentId } from "../lib/studentIdentity";
+import { MathText } from "./MathText";
 
 interface Challenge {
   _id: string;
@@ -16,6 +17,7 @@ interface Challenge {
   recipientName?: string;
   message: string;
   status: string;
+  responseStatus?: string;
   winnerId?: string | null;
   isTie?: boolean;
   solutions?: ChallengeSolution[];
@@ -66,6 +68,29 @@ export function ChallengeInbox() {
   }, []);
 
   const challenges = activeTab === "received" ? received : sent;
+
+  const handleRespond = async (challengeId: string, action: "accept" | "reject") => {
+    const response = await fetch(`/api/challenges/${challengeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId, action }),
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || "No se pudo responder al desafío.");
+    }
+
+    if (action === "reject") {
+      setReceived((prev) => prev.filter((challenge) => challenge._id !== challengeId));
+    } else {
+      setReceived((prev) =>
+        prev.map((challenge) =>
+          challenge._id === challengeId ? { ...challenge, responseStatus: "accepted" } : challenge
+        )
+      );
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -141,6 +166,7 @@ export function ChallengeInbox() {
                 activeTab={activeTab}
                 onSolve={() => router.push(`/solve/${challenge.exerciseId}?challenge=${challenge._id}`)}
                 onDetail={() => router.push(`/challenges/${challenge._id}`)}
+                onRespond={(action) => handleRespond(challenge._id, action)}
               />
             ))}
           </div>
@@ -156,13 +182,36 @@ function ChallengeCard({
   activeTab,
   onSolve,
   onDetail,
+  onRespond,
 }: {
   challenge: Challenge;
   currentStudentId: string;
   activeTab: "received" | "sent";
   onSolve: () => void;
   onDetail: () => void;
+  onRespond: (action: "accept" | "reject") => Promise<void>;
 }) {
+  const [isResponding, setIsResponding] = useState(false);
+  const [respondError, setRespondError] = useState("");
+
+  const responseStatus = challenge.responseStatus ?? "pending";
+  const isAwaitingResponse = responseStatus === "pending";
+  const isRejected = responseStatus === "rejected";
+  const isAccepted = responseStatus === "accepted" || (!isAwaitingResponse && !isRejected);
+
+  const handleRespond = async (action: "accept" | "reject") => {
+    setIsResponding(true);
+    setRespondError("");
+
+    try {
+      await onRespond(action);
+    } catch (err) {
+      setRespondError(err instanceof Error ? err.message : "No se pudo responder al desafío.");
+    } finally {
+      setIsResponding(false);
+    }
+  };
+
   const senderSolution = challenge.solutions?.find(
     (solution) => solution.studentId.toUpperCase() === challenge.senderId.toUpperCase()
   );
@@ -192,8 +241,8 @@ function ChallengeCard({
           {challenge.exerciseTopic || "Ejercicio"}
         </span>
         <div className="flex items-center gap-2">
-          <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(challenge.status)}`}>
-            {getStatusText(challenge.status)}
+          <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(challenge.status, responseStatus)}`}>
+            {getStatusText(challenge.status, responseStatus)}
           </span>
           <span className="text-sm text-muted-foreground">
             {new Date(challenge.createdAt).toLocaleDateString()}
@@ -202,7 +251,9 @@ function ChallengeCard({
       </div>
 
       {/* Enunciado truncado */}
-      <p className="text-sm line-clamp-2 text-muted-foreground">{challenge.exerciseStatement}</p>
+      <div className="text-sm text-muted-foreground line-clamp-2 overflow-hidden">
+        <MathText content={challenge.exerciseStatement} />
+      </div>
 
       {/* Participante */}
       <div className="text-sm">
@@ -238,6 +289,16 @@ function ChallengeCard({
                 return `Ganador: ${winnerName}`;
               })()}
         </div>
+      ) : isRejected ? (
+        <div className="text-sm font-medium px-3 py-2 rounded-lg bg-red-50 text-red-800">
+          Este desafío fue rechazado.
+        </div>
+      ) : isAwaitingResponse ? (
+        <div className="text-sm font-medium px-3 py-2 rounded-lg bg-muted text-muted-foreground">
+          {activeTab === "received"
+            ? "Debés aceptar o rechazar este desafío para continuar."
+            : "Esperando respuesta del desafiado."}
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-2">
           <ParticipantStatus label="Vos" solved={currentStudentSolved} />
@@ -252,22 +313,45 @@ function ChallengeCard({
         </div>
       )}
 
+      {respondError && <p className="text-sm text-red-700">{respondError}</p>}
+
       {/* Acciones */}
       <div className="flex gap-2 mt-auto">
-        {challenge.status !== "completed" && !currentStudentSolved && (
-          <button
-            onClick={onSolve}
-            className="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:opacity-90 transition-opacity text-sm"
-          >
-            Resolver
-          </button>
+        {activeTab === "received" && isAwaitingResponse ? (
+          <>
+            <button
+              onClick={() => handleRespond("accept")}
+              disabled={isResponding}
+              className="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:opacity-90 transition-opacity text-sm disabled:opacity-50"
+            >
+              Aceptar
+            </button>
+            <button
+              onClick={() => handleRespond("reject")}
+              disabled={isResponding}
+              className="flex-1 border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors text-sm disabled:opacity-50"
+            >
+              Rechazar
+            </button>
+          </>
+        ) : (
+          <>
+            {challenge.status !== "completed" && !currentStudentSolved && isAccepted && (
+              <button
+                onClick={onSolve}
+                className="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:opacity-90 transition-opacity text-sm"
+              >
+                Resolver
+              </button>
+            )}
+            <button
+              onClick={onDetail}
+              className="flex-1 border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors text-sm"
+            >
+              Ver detalle
+            </button>
+          </>
         )}
-        <button
-          onClick={onDetail}
-          className="flex-1 border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors text-sm"
-        >
-          Ver detalle
-        </button>
       </div>
     </div>
   );
@@ -285,7 +369,10 @@ function ParticipantStatus({ label, solved }: { label: string; solved: boolean }
 }
 
 
-function getStatusText(status: string) {
+function getStatusText(status: string, responseStatus: string) {
+  if (responseStatus === "rejected") return "Rechazado";
+  if (responseStatus === "pending") return "Esperando respuesta";
+
   switch (status) {
     case "completed":
       return "Terminado";
@@ -296,7 +383,10 @@ function getStatusText(status: string) {
   }
 }
 
-function getStatusColor(status: string) {
+function getStatusColor(status: string, responseStatus: string) {
+  if (responseStatus === "rejected") return "text-red-700 bg-red-50";
+  if (responseStatus === "pending") return "text-muted-foreground bg-muted";
+
   switch (status) {
     case "completed":
       return "text-green-700 bg-green-50";

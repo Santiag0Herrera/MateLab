@@ -80,6 +80,7 @@ export async function POST(request: Request) {
       exerciseId: body.exerciseId,
       recipientId: studentId,
       status: "pending",
+      responseStatus: { $ne: "rejected" },
     });
 
     if (pendingChallenge) {
@@ -104,6 +105,20 @@ export async function POST(request: Request) {
     if (![challenge.senderId, challenge.recipientId].includes(studentId)) {
       return NextResponse.json(
         { error: "This student does not participate in the challenge." },
+        { status: 403 }
+      );
+    }
+
+    if (challenge.responseStatus === "rejected") {
+      return NextResponse.json(
+        { error: "Este desafío fue rechazado." },
+        { status: 403 }
+      );
+    }
+
+    if ((challenge.responseStatus ?? "accepted") !== "accepted") {
+      return NextResponse.json(
+        { error: "Debés aceptar el desafío antes de resolverlo." },
         { status: 403 }
       );
     }

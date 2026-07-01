@@ -1,6 +1,17 @@
 export type Difficulty = "Baja" | "Media" | "Alta" | "Pendiente de análisis";
 export type Source = "Precargado" | "Subido por alumno" | "Generado por IA";
 
+export const AVAILABLE_TOPICS = [
+  "Derivadas",
+  "Límites",
+  "Integrales",
+  "Funciones",
+  "Matrices",
+  "Ecuaciones",
+  "Álgebra",
+  "Probabilidad",
+];
+
 export interface Exercise {
   id: string;
   topic: string;

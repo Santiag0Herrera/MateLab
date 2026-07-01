@@ -61,7 +61,9 @@ export async function GET(request: Request) {
           .toArray();
 
   return NextResponse.json({
-    received: received.map((challenge) => serializeChallengeForStudent(challenge, challengeSolutions, studentId)),
+    received: received
+      .filter((challenge) => challenge.responseStatus !== "rejected")
+      .map((challenge) => serializeChallengeForStudent(challenge, challengeSolutions, studentId)),
     sent: sent.map((challenge) => serializeChallengeForStudent(challenge, challengeSolutions, studentId)),
   });
 }
@@ -130,6 +132,9 @@ export async function POST(request: Request) {
     recipientName: body.recipientName || "",
     message: body.message || "",
     status: "pending",
+    responseStatus: "pending",
+    acceptedAt: null,
+    rejectedAt: null,
     createdAt: now,
     updatedAt: now,
   });

@@ -23,6 +23,7 @@ export async function GET(request: Request) {
       .collection("challenges")
       .find({
         $or: [{ senderId: studentId }, { recipientId: studentId }],
+        responseStatus: { $ne: "rejected" },
       })
       .sort({ createdAt: -1 })
       .limit(100)

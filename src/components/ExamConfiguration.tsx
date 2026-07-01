@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { getStudentSession } from "../lib/studentIdentity";
+import { AVAILABLE_TOPICS } from "../data/exercises";
 
 interface TopicForm {
   id: number;
@@ -69,8 +70,16 @@ export function ExamConfiguration() {
   );
 
   const loadSubjects = useCallback(async () => {
+    const studentId = getStudentSession()?.publicStudentId;
+
+    if (!studentId) {
+      setError("No se encontró el estudiante de la sesión.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const response = await fetch("/api/subjects");
+      const response = await fetch(`/api/subjects?studentId=${encodeURIComponent(studentId)}`);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "No se pudieron cargar las materias.");
       setSubjects(Array.isArray(payload) ? payload : []);
@@ -266,13 +275,21 @@ export function ExamConfiguration() {
                   className="grid grid-cols-1 md:grid-cols-[1fr_190px_140px_auto] gap-3 items-end bg-muted/40 border border-border rounded-xl p-4"
                 >
                   <Field label={`Tema ${index + 1}`}>
-                    <input
+                    <select
                       value={topic.name}
                       onChange={(event) => updateTopic(topic.id, "name", event.target.value)}
-                      placeholder="Ej. Derivadas"
                       required
                       className="w-full bg-background border border-border rounded-lg p-3"
-                    />
+                    >
+                      <option value="" disabled>
+                        Seleccioná un tema
+                      </option>
+                      {AVAILABLE_TOPICS.map((availableTopic) => (
+                        <option key={availableTopic} value={availableTopic}>
+                          {availableTopic}
+                        </option>
+                      ))}
+                    </select>
                   </Field>
                   <Field label="Mínimo de ejercicios">
                     <input
@@ -404,7 +421,7 @@ export function ExamConfiguration() {
         </form>
 
         <section>
-          <h2 className="mb-4">Configuraciones guardadas</h2>
+          <h2 className="mb-4">Tus configuraciones guardadas</h2>
           {isLoading ? (
             <div className="bg-card border border-border rounded-xl p-6 text-muted-foreground">
               Cargando materias...

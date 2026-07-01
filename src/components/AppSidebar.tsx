@@ -116,6 +116,18 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
+        <div className="flex items-center justify-center px-2 py-1 group-data-[collapsible=icon]:px-0">
+          <div className="size-10 rounded-lg overflow-hidden bg-black shrink-0 group-data-[collapsible=icon]:size-8">
+            <img
+              src="/logo.jpeg"
+              alt="PathPrep IA"
+              className="w-full h-full object-cover object-[center_35%] scale-150"
+            />
+          </div>
+          <span className="ml-2 font-medium truncate group-data-[collapsible=icon]:hidden">
+            PathPrep <span className="text-primary">IA</span>
+          </span>
+        </div>
         <div className="px-2 py-1 group-data-[collapsible=icon]:hidden">
           <p className="font-medium truncate">{myStudentName || myStudentId}</p>
           <p className="text-xs text-muted-foreground truncate">{myStudentId}</p>

@@ -28,6 +28,7 @@ interface ChallengeData {
   recipientName?: string;
   message: string;
   status: string;
+  responseStatus?: string;
   winnerId?: string | null;
   isTie?: boolean;
   solutions?: ChallengeSolution[];
@@ -40,6 +41,8 @@ export function ChallengeDetail({ id }: { id: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [studentId, setStudentId] = useState("");
+  const [isResponding, setIsResponding] = useState(false);
+  const [respondError, setRespondError] = useState("");
 
   useEffect(() => {
     const currentStudentId = getOrCreateStudentId();
@@ -53,6 +56,32 @@ export function ChallengeDetail({ id }: { id: string }) {
       .catch(() => setNotFound(true))
       .finally(() => setIsLoading(false));
   }, [id]);
+
+  const handleRespond = async (action: "accept" | "reject") => {
+    if (!challenge) return;
+
+    setIsResponding(true);
+    setRespondError("");
+
+    try {
+      const response = await fetch(`/api/challenges/${challenge._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId, action }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "No se pudo responder al desafío.");
+      }
+
+      setChallenge((prev) => (prev ? { ...prev, responseStatus: payload.responseStatus } : prev));
+    } catch (err) {
+      setRespondError(err instanceof Error ? err.message : "No se pudo responder al desafío.");
+    } finally {
+      setIsResponding(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -104,6 +133,11 @@ export function ChallengeDetail({ id }: { id: string }) {
   const opponentSolved = !!opponentSolution;
 
   const isCompleted = challenge.status === "completed";
+  const isRecipient = normalizedStudentId === challenge.recipientId.toUpperCase();
+  const responseStatus = challenge.responseStatus ?? "pending";
+  const isAwaitingResponse = responseStatus === "pending";
+  const isRejected = responseStatus === "rejected";
+  const isAccepted = responseStatus === "accepted" || (!isAwaitingResponse && !isRejected);
 
   return (
     <div className="min-h-screen bg-background">
@@ -120,8 +154,8 @@ export function ChallengeDetail({ id }: { id: string }) {
           <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">
             {challenge.exerciseTopic || "Ejercicio"}
           </span>
-          <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(challenge.status)}`}>
-            {getStatusText(challenge.status)}
+          <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(challenge.status, responseStatus)}`}>
+            {getStatusText(challenge.status, responseStatus)}
           </span>
           <span className="text-sm text-muted-foreground ml-auto">
             {new Date(challenge.createdAt).toLocaleDateString()}
@@ -159,8 +193,36 @@ export function ChallengeDetail({ id }: { id: string }) {
           )}
         </div>
 
+        {/* Responder al desafío */}
+        {isRecipient && isAwaitingResponse && (
+          <div className="bg-card border border-border rounded-xl p-6 mb-6">
+            <p className="font-medium mb-4">¿Aceptás este desafío?</p>
+            {respondError && <p className="text-sm text-red-700 mb-3">{respondError}</p>}
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleRespond("accept")}
+                disabled={isResponding}
+                className="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                Aceptar
+              </button>
+              <button
+                onClick={() => handleRespond("reject")}
+                disabled={isResponding}
+                className="flex-1 border border-border py-2 px-4 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                Rechazar
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Estado y resultado */}
-        {isCompleted ? (
+        {isRejected ? (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-5 mb-6">
+            <p className="text-red-900 font-medium">Este desafío fue rechazado.</p>
+          </div>
+        ) : isCompleted ? (
           <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-6">
             <p className="text-green-900 font-medium">
               {challenge.isTie
@@ -176,6 +238,14 @@ export function ChallengeDetail({ id }: { id: string }) {
                           : winnerId;
                     return `Ganador: ${winnerName}`;
                   })()}
+            </p>
+          </div>
+        ) : isAwaitingResponse ? (
+          <div className="bg-muted/50 border border-border rounded-xl p-5 mb-6">
+            <p className="text-muted-foreground font-medium">
+              {isRecipient
+                ? "Aceptá o rechazá el desafío para poder resolverlo."
+                : "Esperando respuesta del desafiado."}
             </p>
           </div>
         ) : (
@@ -212,7 +282,7 @@ export function ChallengeDetail({ id }: { id: string }) {
             {currentStudentSolution && (
               <SolutionBlock label="Tu resolución" solution={currentStudentSolution} />
             )}
-            {!currentStudentSolved && (
+            {!currentStudentSolved && isAccepted && (
               <button
                 onClick={() => router.push(`/solve/${challenge.exerciseId}?challenge=${challenge._id}`)}
                 className="w-full bg-primary text-primary-foreground py-3 px-6 rounded-lg hover:opacity-90 transition-opacity"
@@ -290,7 +360,10 @@ function ParticipantStatus({ label, solved }: { label: string; solved: boolean }
   );
 }
 
-function getStatusText(status: string) {
+function getStatusText(status: string, responseStatus: string) {
+  if (responseStatus === "rejected") return "Rechazado";
+  if (responseStatus === "pending") return "Esperando respuesta";
+
   switch (status) {
     case "completed": return "Terminado";
     case "in-progress": return "En curso";
@@ -298,7 +371,10 @@ function getStatusText(status: string) {
   }
 }
 
-function getStatusColor(status: string) {
+function getStatusColor(status: string, responseStatus: string) {
+  if (responseStatus === "rejected") return "text-red-700 bg-red-50";
+  if (responseStatus === "pending") return "text-muted-foreground bg-muted";
+
   switch (status) {
     case "completed": return "text-green-700 bg-green-50";
     case "in-progress": return "text-yellow-700 bg-yellow-50";

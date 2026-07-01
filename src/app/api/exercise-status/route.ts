@@ -31,7 +31,11 @@ export async function GET(request: Request) {
 
   const statuses = exerciseIds.reduce<Record<string, any>>((acc, exerciseId) => {
     const solution = solutions.find((item) => item.exerciseId === exerciseId);
-    const exerciseChallenges = challenges.filter((challenge) => challenge.exerciseId === exerciseId);
+    const exerciseChallenges = challenges.filter((challenge) => {
+      if (challenge.exerciseId !== exerciseId) return false;
+      const isRecipient = challenge.recipientId === studentId;
+      return !(isRecipient && challenge.responseStatus === "rejected");
+    });
     const visibleChallenge =
       exerciseChallenges.find((challenge) => challenge.status !== "completed") ||
       exerciseChallenges[0] ||
