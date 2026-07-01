@@ -52,13 +52,33 @@ Reglas:
 `.trim();
 }
 
+function sanitizeInvalidEscapes(value: string): string {
+  // Solo se tratan como escapes JSON válidos los que realmente usamos a propósito
+  // (comilla, backslash, barra, \n para separar líneas). \b, \f, \r y \t se excluyen
+  // deliberadamente: colisionan con el inicio de comandos LaTeX muy comunes
+  // (\frac, \forall, \tan, \to, \theta, \text, \times, \rightarrow, \bar, \boxed...)
+  // y tratarlos como válidos los corrompería en un carácter de control silencioso.
+  return value.replace(/\\u[0-9a-fA-F]{4}|\\["\\/n]|\\/g, (match) =>
+    match.length > 1 ? match : "\\\\"
+  );
+}
+
 function parseEvaluationResult(raw: string): EvaluationResult {
   const cleaned = raw
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/```\s*$/, "")
     .trim();
 
-  const parsed = JSON.parse(cleaned);
+  const sanitized = sanitizeInvalidEscapes(cleaned);
+
+  let parsed: any;
+
+  try {
+    parsed = JSON.parse(sanitized);
+  } catch (err) {
+    console.error("[gemini] JSON inválido tras sanear escapes:", sanitized);
+    throw err;
+  }
 
   return {
     score: typeof parsed.score === "number" ? parsed.score : undefined,
