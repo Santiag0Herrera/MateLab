@@ -11,7 +11,7 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MateLab",
+  title: "PathPrep IA",
   description: "Practica matematica con correcciones asistidas por IA.",
 };
 
