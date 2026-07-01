@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { getOrCreateStudentId } from "../lib/studentIdentity";
+import { MathText } from "./MathText";
 
 interface ChallengeSolution {
   _id: string;
@@ -130,7 +131,7 @@ export function ChallengeDetail({ id }: { id: string }) {
         {/* Enunciado */}
         <div className="bg-card border border-border rounded-xl p-6 mb-6">
           <p className="text-sm text-muted-foreground mb-2">Enunciado</p>
-          <p className="text-lg">{challenge.exerciseStatement}</p>
+          <MathText content={challenge.exerciseStatement} className="text-lg" />
         </div>
 
         {/* Participantes */}
@@ -247,11 +248,10 @@ function SolutionBlock({
       {solution?.solutionText ? (
         <div className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Tu respuesta:</p>
-          <div className="text-sm space-y-0.5">
-            {solution.solutionText.replace(/\\n/g, "\n").split("\n").map((line, i) => (
-              <p key={i}>{line || " "}</p>
-            ))}
-          </div>
+          <MathText
+            content={solution.solutionText.replace(/\\n/g, "\n")}
+            className="text-sm space-y-0.5"
+          />
         </div>
       ) : (
         <p className="text-sm text-muted-foreground mb-4">Sin respuesta cargada</p>
@@ -261,14 +261,14 @@ function SolutionBlock({
         <div className="border-t border-border pt-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Análisis:</p>
           {solution?.evaluation?.feedback && (
-            <p className="text-sm text-muted-foreground mb-2">{solution.evaluation.feedback}</p>
+            <MathText content={solution.evaluation.feedback} className="text-sm text-muted-foreground mb-2" />
           )}
           {solution?.evaluation?.corrections && solution.evaluation.corrections.length > 0 && (
             <ul className="space-y-1">
               {solution.evaluation.corrections.map((correction, idx) => (
                 <li key={idx} className="text-sm flex gap-2">
                   <span className="text-primary font-medium flex-shrink-0">{idx + 1}.</span>
-                  {correction}
+                  <MathText content={correction} />
                 </li>
               ))}
             </ul>

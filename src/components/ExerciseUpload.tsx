@@ -2,7 +2,24 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft, HelpCircle, Upload } from "lucide-react";
+import { MathText } from "./MathText";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "./ui/dialog";
+
+const FORMAT_EXAMPLES = [
+  { label: "Potencia", code: "x^2" },
+  { label: "Raíz", code: "\\sqrt{x}" },
+  { label: "Fracción", code: "\\frac{a}{b}" },
+  { label: "Límite", code: "\\lim_{x \\to 0}" },
+  { label: "Integral", code: "\\int_{a}^{b} f(x)\\,dx" },
+  { label: "Derivada", code: "\\frac{d}{dx}f(x)" },
+];
 
 const AVAILABLE_TOPICS = [
   "Derivadas",
@@ -20,6 +37,7 @@ export function ExerciseUpload() {
   const [selectedTopic, setSelectedTopic] = useState("Derivadas");
   const [statement, setStatement] = useState("");
   const [source, setSource] = useState("Ejercicio de guía");
+  const [showFormatHelp, setShowFormatHelp] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +88,17 @@ export function ExerciseUpload() {
             </div>
 
             <div>
-              <label className="block mb-2">Enunciado del ejercicio</label>
+              <div className="flex items-center justify-between mb-2">
+                <label>Enunciado del ejercicio</label>
+                <button
+                  type="button"
+                  onClick={() => setShowFormatHelp(true)}
+                  className="flex items-center gap-1 text-sm text-primary hover:underline"
+                >
+                  <HelpCircle className="size-4" />
+                  ¿Cómo escribo fórmulas?
+                </button>
+              </div>
               <textarea
                 value={statement}
                 onChange={(e) => setStatement(e.target.value)}
@@ -79,6 +107,12 @@ export function ExerciseUpload() {
                 rows={6}
                 className="w-full bg-input-background border border-border rounded-lg p-3 resize-none"
               />
+              {statement.trim() && (
+                <div className="mt-2 bg-muted/50 border border-border rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Vista previa</p>
+                  <MathText content={statement} />
+                </div>
+              )}
             </div>
 
             <div>
@@ -118,6 +152,40 @@ export function ExerciseUpload() {
           </button>
         </form>
       </div>
+
+      <Dialog open={showFormatHelp} onOpenChange={setShowFormatHelp}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>¿Cómo escribo fórmulas?</DialogTitle>
+            <DialogDescription>
+              Envolvé las fórmulas con <code>$...$</code> para expresiones dentro del texto, o{" "}
+              <code>$$...$$</code> para que ocupen un bloque aparte. El resto del enunciado se
+              escribe en español normal.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-900">
+            <strong>Importante:</strong> usá un solo backslash por comando (<code>\frac</code>,{" "}
+            <code>\sqrt</code>), nunca <code>\\frac</code> con doble backslash. Si copiás el
+            enunciado desde otro lado, revisá que no se hayan duplicado las barras.
+          </div>
+
+          <div className="space-y-3">
+            {FORMAT_EXAMPLES.map((example) => (
+              <div
+                key={example.label}
+                className="flex items-center justify-between gap-4 bg-muted/50 border border-border rounded-lg p-3"
+              >
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">{example.label}</p>
+                  <code className="text-sm">${example.code}$</code>
+                </div>
+                <MathText content={`$${example.code}$`} />
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Loader2, ImageIcon, X } from "lucide-react";
 import { Exercise } from "../data/exercises";
 import { getOrCreateStudentId } from "../lib/studentIdentity";
+import { MathText } from "./MathText";
 
 interface EvaluationResult {
   score?: number;
@@ -243,13 +244,15 @@ export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: s
                 </div>
 
                 {evaluation.feedback && (
-                  <p className="text-muted-foreground mb-4">{evaluation.feedback}</p>
+                  <MathText content={evaluation.feedback} className="text-muted-foreground mb-4" />
                 )}
 
                 {evaluation.corrections && evaluation.corrections.length > 0 && (
                   <ul className="list-disc pl-5 space-y-2">
                     {evaluation.corrections.map((correction, index) => (
-                      <li key={index}>{correction}</li>
+                      <li key={index}>
+                        <MathText content={correction} />
+                      </li>
                     ))}
                   </ul>
                 )}
@@ -333,7 +336,7 @@ export function ExerciseSolve({ id, challengeId }: { id: string; challengeId?: s
         {/* Enunciado del ejercicio */}
         <div className="bg-card border border-border rounded-xl p-6 mb-6">
           <p className="text-sm text-muted-foreground mb-2">Enunciado</p>
-          <p className="text-lg">{exercise.statement}</p>
+          <MathText content={exercise.statement} className="text-lg" />
         </div>
 
         {/* Zona de carga de imagen */}

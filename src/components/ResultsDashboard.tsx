@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Trophy, UserRound } from "lucide-react";
 import { getOrCreateStudentId } from "../lib/studentIdentity";
+import { MathText } from "./MathText";
 
 interface Solution {
   _id: string;
@@ -175,7 +176,7 @@ function ChallengeResults({
               <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">
                 {challenge.exerciseTopic || "Ejercicio"}
               </span>
-              <p className="mt-3">{challenge.exerciseStatement}</p>
+              <MathText content={challenge.exerciseStatement} className="mt-3" />
             </div>
             <div className="text-sm text-muted-foreground">
               {new Date(challenge.createdAt).toLocaleDateString()}
@@ -240,9 +241,11 @@ function AnswerBlock({ title, solution }: { title: string; solution?: Solution }
   return (
     <div className="bg-muted/50 border border-border rounded-lg p-4">
       <p className="text-sm text-muted-foreground mb-2">{title}</p>
-      <p className="whitespace-pre-line text-sm">
-        {solution?.solutionText || "Pendiente de resolución"}
-      </p>
+      {solution?.solutionText ? (
+        <MathText content={solution.solutionText} className="text-sm" />
+      ) : (
+        <p className="text-sm">Pendiente de resolución</p>
+      )}
     </div>
   );
 }
@@ -272,7 +275,7 @@ function ParticipantScore({
               : "Sin puntaje"}
           </p>
           {solution.evaluation?.feedback && (
-            <p className="text-sm text-muted-foreground">{solution.evaluation.feedback}</p>
+            <MathText content={solution.evaluation.feedback} className="text-sm text-muted-foreground" />
           )}
         </>
       ) : (
@@ -294,11 +297,13 @@ function SolutionCard({ solution }: { solution: Solution }) {
         </span>
       </div>
 
-      <p className="mb-4">{solution.exerciseStatement}</p>
+      <MathText content={solution.exerciseStatement} className="mb-4" />
 
       <div className="bg-muted/50 border border-border rounded-lg p-4 mb-4">
         <p className="text-sm text-muted-foreground mb-2">Tu resolución</p>
-        <p className="line-clamp-4">{solution.solutionText}</p>
+        <div className="line-clamp-4 overflow-hidden">
+          <MathText content={solution.solutionText} />
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-4">
@@ -313,7 +318,7 @@ function SolutionCard({ solution }: { solution: Solution }) {
       </div>
 
       {solution.evaluation?.feedback && (
-        <p className="text-sm text-muted-foreground mt-4">{solution.evaluation.feedback}</p>
+        <MathText content={solution.evaluation.feedback} className="text-sm text-muted-foreground mt-4" />
       )}
     </div>
   );

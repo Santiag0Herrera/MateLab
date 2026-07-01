@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Copy, Loader2, User, X } from "lucide-react";
 import { Exercise } from "../data/exercises";
 import { getOrCreateStudentId, getStudentName } from "../lib/studentIdentity";
+import { MathText } from "./MathText";
 
 interface StudentResult {
   publicStudentId: string;
@@ -229,7 +230,7 @@ export function ChallengeStudent({ id }: { id: string }) {
         <div className="bg-card border border-border rounded-xl p-6 mb-6">
           <p className="text-sm text-muted-foreground mb-3">Ejercicio seleccionado</p>
 
-          <p className="text-lg mb-4">{exercise.statement}</p>
+          <MathText content={exercise.statement} className="text-lg mb-4" />
 
           <div className="flex gap-3">
             <span className="bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm">

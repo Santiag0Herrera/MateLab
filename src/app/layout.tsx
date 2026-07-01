@@ -3,6 +3,7 @@ import { JetBrains_Mono } from "next/font/google";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { AuthGuard } from "../components/AuthGuard";
 import "../styles/index.css";
+import "katex/dist/katex.min.css";
 
 const jetBrainsMono = JetBrains_Mono({
   subsets: ["latin"],

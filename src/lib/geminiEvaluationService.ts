@@ -46,7 +46,8 @@ Reglas:
 - "feedback" debe ser un párrafo breve con la impresión general.
 - Cada elemento de "corrections" debe referenciar un paso o línea concreta de la imagen y explicar si está bien o mal, y por qué.
 - Si un paso es correcto, indicalo. Si es incorrecto, explicá cuál debería ser el resultado correcto.
-- "solutionText" debe ser una transcripción literal y ordenada de todo lo que escribió el estudiante, en texto plano, sin agregar ni omitir pasos. Usá el carácter \n para separar cada paso o línea del manuscrito, respetando la estructura visual del original.
+- "solutionText" debe ser una transcripción literal y ordenada de todo lo que escribió el estudiante, sin agregar ni omitir pasos. Usá el carácter \n para separar cada paso o línea del manuscrito, respetando la estructura visual del original.
+- Cuando en "feedback", "corrections" o "solutionText" aparezca una expresión matemática (potencias, raíces, fracciones, integrales, límites, etc.), escribila en formato LaTeX delimitado por $...$ para expresiones inline o $$...$$ para bloques, por ejemplo "$x^2 + \\sqrt{y}$" en vez de "x^2 + sqrt(y)". El resto del texto debe seguir en español plano.
 - No incluyas nada fuera del JSON.
 `.trim();
 }

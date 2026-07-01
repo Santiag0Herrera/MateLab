@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Users } from "lucide-react";
 import { Exercise } from "../data/exercises";
 import { getOrCreateStudentId } from "../lib/studentIdentity";
+import { MathText } from "./MathText";
 
 interface ExerciseStatus {
   solution?: {
@@ -159,7 +160,7 @@ export function ExerciseDetail({ id }: { id: string }) {
           </div>
 
           <h2 className="mb-4">Enunciado</h2>
-          <p className="text-lg mb-6">{exercise.statement}</p>
+          <MathText content={exercise.statement} className="text-lg mb-6" />
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-muted/50 border border-border rounded-lg p-4">
@@ -199,25 +200,24 @@ export function ExerciseDetail({ id }: { id: string }) {
                 {status.solution.solutionText && (
                   <div className={`border-t ${theme.divider} pt-2 mt-2`}>
                     <p className={`${theme.label} text-xs font-semibold uppercase tracking-wide mb-1`}>Tu respuesta:</p>
-                    <div className={`${theme.text} text-sm space-y-0.5`}>
-                      {status.solution.solutionText.replace(/\\n/g, "\n").split("\n").map((line, i) => (
-                        <p key={i}>{line || " "}</p>
-                      ))}
-                    </div>
+                    <MathText
+                      content={status.solution.solutionText.replace(/\\n/g, "\n")}
+                      className={`${theme.text} text-sm space-y-0.5`}
+                    />
                   </div>
                 )}
                 {(status.solution.evaluation?.feedback || (status.solution.evaluation?.corrections?.length ?? 0) > 0) && (
                   <div className={`border-t ${theme.divider} pt-2 mt-2`}>
                     <p className={`${theme.label} text-xs font-semibold uppercase tracking-wide mb-2`}>Análisis:</p>
                     {status.solution.evaluation?.feedback && (
-                      <p className={`${theme.subtext} text-sm mb-2`}>{status.solution.evaluation.feedback}</p>
+                      <MathText content={status.solution.evaluation.feedback} className={`${theme.subtext} text-sm mb-2`} />
                     )}
                     {status.solution.evaluation?.corrections && status.solution.evaluation.corrections.length > 0 && (
                       <ul className="space-y-1">
                         {status.solution.evaluation.corrections.map((correction, idx) => (
                           <li key={idx} className={`${theme.text} text-sm flex gap-2`}>
                             <span className={`${theme.bullet} font-medium flex-shrink-0`}>{idx + 1}.</span>
-                            {correction}
+                            <MathText content={correction} />
                           </li>
                         ))}
                       </ul>

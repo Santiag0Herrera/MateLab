@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { getOrCreateStudentId } from "../lib/studentIdentity";
+import { MathText } from "./MathText";
 
 export function ExerciseAnalysis() {
   const router = useRouter();
@@ -120,7 +121,7 @@ export function ExerciseAnalysis() {
 
             <div className="bg-muted/50 border border-border rounded-lg p-4">
               <p className="text-sm text-muted-foreground mb-2">Enunciado</p>
-              <p>{exerciseData.statement}</p>
+              <MathText content={exerciseData.statement} />
             </div>
           </div>
 
