@@ -87,14 +87,23 @@ export function ExamPreparation() {
           Volver a ejercicios
         </button>
 
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Target className="size-8 text-primary" />
-            <h1>Mi preparación para exámenes</h1>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <Target className="size-8 text-primary" />
+              <h1>Mi preparación para exámenes</h1>
+            </div>
+            <p className="text-muted-foreground">
+              El porcentaje combina tus puntajes, los ejercicios mínimos y el peso de cada tema.
+            </p>
           </div>
-          <p className="text-muted-foreground">
-            El porcentaje combina tus puntajes, los ejercicios mínimos y el peso de cada tema.
-          </p>
+          <button
+            onClick={() => router.push("/exam-setup")}
+            className="border border-border px-6 py-3 rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+          >
+            <BookOpenCheck className="size-5" />
+            Configurar examen
+          </button>
         </div>
 
         {isLoading && (

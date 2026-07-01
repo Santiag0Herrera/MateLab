@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, BookOpenCheck, Plus, SlidersHorizontal } from "lucide-react";
+import { BookOpen, Plus, SlidersHorizontal } from "lucide-react";
 import { AVAILABLE_TOPICS, Exercise } from "../data/exercises";
 import { MathText } from "./MathText";
 import { getStudentSession } from "../lib/studentIdentity";
@@ -95,7 +95,7 @@ export function ExerciseList() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-6 pb-[52px]">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
@@ -107,26 +107,8 @@ export function ExerciseList() {
           </p>
         </div>
 
-        {/* Upload Button */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => router.push("/upload")}
-            className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-          >
-            <Plus className="size-5" />
-            Cargar nuevo ejercicio
-          </button>
-          <button
-            onClick={() => router.push("/exam-setup")}
-            className="border border-border px-6 py-3 rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2"
-          >
-            <BookOpenCheck className="size-5" />
-            Configurar examen
-          </button>
-        </div>
-
         {/* Filters */}
-        <div className="mb-6">
+        <div className="mb-6 flex justify-end">
           <button
             onClick={() => setShowFilters(true)}
             className="border border-border px-4 py-2 rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2"
@@ -218,6 +200,16 @@ export function ExerciseList() {
           ))}
         </div>
       </div>
+
+      <button
+        onClick={() => router.push("/upload")}
+        aria-label="Cargar ejercicio"
+        title="Cargar ejercicio"
+        className="fixed bottom-6 right-6 z-40 bg-primary text-primary-foreground pl-4 pr-5 py-3 rounded-lg text-sm shadow-[0_8px_20px_-4px_rgba(0,0,0,0.35)] hover:shadow-[0_10px_24px_-4px_rgba(0,0,0,0.4)] hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-1.5"
+      >
+        <Plus className="size-4" />
+        Cargar ejercicio
+      </button>
     </div>
   );
 }

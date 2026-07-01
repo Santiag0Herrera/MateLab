@@ -196,11 +196,11 @@ export function ExamConfiguration() {
     <div className="min-h-screen bg-background">
       <div className="max-w-5xl mx-auto p-6">
         <button
-          onClick={() => router.push("/exercises")}
+          onClick={() => router.push("/preparation")}
           className="flex items-center gap-2 mb-6 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="size-5" />
-          Volver a ejercicios
+          Volver a preparación
         </button>
 
         <div className="mb-8">
